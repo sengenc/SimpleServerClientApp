@@ -1,9 +1,6 @@
 package pis.hue2.client;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.Closeable;
-import java.io.IOException;
+import java.io.*;
 import java.net.Socket;
 import java.util.ArrayList;
 
@@ -11,13 +8,25 @@ import java.util.ArrayList;
  * @author ardasengenc
  */
 public class ClientPool implements Runnable, Closeable {
-    private static ArrayList<Client> clients = new ArrayList<>();
-    private Socket socket;
+    private static final ArrayList<ClientPool> clients = new ArrayList<>();
+    private final Socket socket;
     private BufferedReader bufferedReader;
     private BufferedWriter bufferedWriter;
+    private String username;
 
-    public ClientPool(Socket socket) {
+    public ClientPool(Socket socket) throws IOException {
         this.socket = socket;
+        try {
+            this.bufferedWriter = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+            this.bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            close();
+        }
+        clients.add(this);
+        System.out.println(username + " has entered the chat!");
+
     }
 
 
@@ -30,7 +39,21 @@ public class ClientPool implements Runnable, Closeable {
         }
     }
 
-    public void uploadFiles() {
+    public void uploadFiles() throws IOException {
+        File[] files = new File[1];
+        try {
+            FileInputStream fileInputStream = new FileInputStream(files[0].getAbsolutePath());
+            FileOutputStream fileOutputStream = new FileOutputStream(String.valueOf(socket.getOutputStream()));
+            String fileName = files[0].getName();
+            if (fileName.contains(Instruction.ACK.toString())) {
+
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            close();
+        }
+
 
     }
 
