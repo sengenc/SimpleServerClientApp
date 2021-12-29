@@ -3,11 +3,14 @@ package pis.hue2.client;
 import java.io.*;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Scanner;
 
 /**
  * @author ardasengenc
  */
 public class ClientPool implements Runnable, Closeable {
+    static Scanner scanner = new Scanner(System.in);
+
     private static final ArrayList<ClientPool> clients = new ArrayList<>();
     private final Socket socket;
     private BufferedReader bufferedReader;
@@ -30,32 +33,32 @@ public class ClientPool implements Runnable, Closeable {
     }
 
 
-    public void removeClient(Client client) {
-        if (!clients.isEmpty()) {
-            clients.remove(client);
-            System.out.println(client.getClientID() + " has left the chat!");
-        } else {
-            System.out.println("Nobody is in the room!");
-        }
-    }
+//    public void removeClient(Client client) {
+//        if (!clients.isEmpty()) {
+//            clients.remove(client);
+//            System.out.println(client.getClientID() + " has left the chat!");
+//        } else {
+//            System.out.println("Nobody is in the room!");
+//        }
+//    }
 
-    public void uploadFiles() throws IOException {
-        File[] files = new File[1];
-        try {
-            FileInputStream fileInputStream = new FileInputStream(files[0].getAbsolutePath());
-            FileOutputStream fileOutputStream = new FileOutputStream(String.valueOf(socket.getOutputStream()));
-            String fileName = files[0].getName();
-            if (fileName.contains(Instruction.ACK.toString())) {
-
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            close();
-        }
-
-
-    }
+//    public void uploadFiles() throws IOException {
+//        File[] files = new File[1];
+//        try {
+//            FileInputStream fileInputStream = new FileInputStream(files[0].getAbsolutePath());
+//            FileOutputStream fileOutputStream = new FileOutputStream(String.valueOf(socket.getOutputStream()));
+//            String input = scanner.nextLine();
+//            String[] arr  = input.split("\\s+");
+//            String fileName = files[0].getName();
+//            if (arr[0].equals(Instruction.PUT.toString()) && arr[1].equals(fileName)) {
+//                //dosyayi yolla
+//            }
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        } finally {
+//            close();
+//        }
+//    }
 
     public void deleteFiles() {
 
