@@ -4,7 +4,6 @@ import java.io.*;
 import java.net.Socket;
 import java.util.Scanner;
 
-import static pis.hue2.client.ClientPool.scanner;
 
 public class Client implements Closeable {
     private final Socket socket;
@@ -52,7 +51,7 @@ public class Client implements Closeable {
 
     public void clientConnected() throws IOException {
         try {
-            while (socket.isConnected()) {
+            if (socket.isConnected()) {
                 String messageToSend = Instruction.CON.toString();
                 bufferedWriter.write(messageToSend);
                 bufferedWriter.newLine();
@@ -71,27 +70,31 @@ public class Client implements Closeable {
         FileInputStream fileInputStream;
         DataOutputStream dataOutputStream;
         File file = new File(fileName);
+        if (file.exists()) {
+            if (socket.isConnected()) {
+                try {
+                    fileInputStream = new FileInputStream(file);
+                    dataOutputStream = new DataOutputStream(socket.getOutputStream());
 
-        while (socket.isConnected()) {
-            try {
-                fileInputStream = new FileInputStream(file);
-                dataOutputStream = new DataOutputStream(socket.getOutputStream());
+                    String name = file.getName();
+                    byte[] fileNameBytes = name.getBytes();
 
-                String name = file.getName();
-                byte[] fileNameBytes = name.getBytes();
+                    byte[] fileContentBytes = new byte[(int) file.length()];
+                    fileInputStream.read(fileContentBytes);
 
-                byte[] fileContentBytes = new byte[(int) file.length()];
-                fileInputStream.read(fileContentBytes);
+                    dataOutputStream.writeInt(fileNameBytes.length);
+                    dataOutputStream.write(fileNameBytes);
 
-                dataOutputStream.writeInt(fileNameBytes.length);
-                dataOutputStream.write(fileNameBytes);
-
-                dataOutputStream.writeInt(fileContentBytes.length);
-                dataOutputStream.write(fileContentBytes);
-            } catch (IOException err) {
-                err.printStackTrace();
+                    dataOutputStream.writeInt(fileContentBytes.length);
+                    dataOutputStream.write(fileContentBytes);
+                } catch (IOException err) {
+                    err.printStackTrace();
+                }
             }
+        } else {
+            System.out.println("This file does not exist!");
         }
+
     }
 
     public void download() {
@@ -151,13 +154,11 @@ public class Client implements Closeable {
 
 
     public static void main(String[] args) throws IOException {
-        //Instruction ack = Instruction.ACK;
-        String exercise = "ACK";
-        if (exercise.equals(Instruction.ACK.toString())) {
-            System.out.println("SA");
-        }
-        Socket socket = new Socket("localhost", 1234);
+        Socket socket = new Socket("localhost", 1881);
         Client client = new Client(socket);
+        while (true) {
+            client.clientFunctions();
+        }
 
 
     }
