@@ -1,30 +1,26 @@
 package pis.hue2.client;
 
+import javax.xml.crypto.Data;
 import java.io.*;
 import java.net.Socket;
 import java.util.Scanner;
 
 
 public class Client implements Closeable {
-    private final Socket socket;
+    private static Socket socket;
     private BufferedReader bufferedReader;
     private BufferedWriter bufferedWriter;
+    private FileInputStream fileInputStream;
+    private DataOutputStream dataOutputStream;
 
+    InputStreamReader inputStreamReader = null;
+    OutputStreamWriter outputStreamWriter = null;
 
-
-    public Client(Socket socket) {
-        this.socket = socket;
-        try {
-            this.bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            this.bufferedWriter = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
 
     public void clientFunctions() throws IOException {
         Scanner scanner = new Scanner(System.in);
         String input = scanner.nextLine();
+        System.out.println("clientfun");
         String[] arr = input.split("\\s+");
 
 
@@ -35,7 +31,18 @@ public class Client implements Closeable {
             case "LST":
                 break;
             case "PUT":
-                upload(arr[1]);
+                inputStreamReader = new InputStreamReader(socket.getInputStream());
+                outputStreamWriter = new OutputStreamWriter(socket.getOutputStream());
+
+                bufferedReader = new BufferedReader(inputStreamReader);
+                bufferedWriter = new BufferedWriter(outputStreamWriter);
+
+                bufferedWriter.write(arr[1]);
+                bufferedWriter.newLine();
+                bufferedWriter.flush();
+
+                System.out.println("putsw");
+                upload("C:\\Users\\Berkay\\Desktop\\" + arr[1]);
                 break;
             case "GET":
                 break;
@@ -51,12 +58,10 @@ public class Client implements Closeable {
 
     public void clientConnected() throws IOException {
         try {
-            if (socket.isConnected()) {
-                String messageToSend = Instruction.CON.toString();
-                bufferedWriter.write(messageToSend);
-                bufferedWriter.newLine();
-                bufferedWriter.flush();
-            }
+            System.out.println("clientcon");
+            socket = new Socket("localhost", 1992);
+            System.out.println("Connected!");
+
         } catch (IOException e) {
             close();
         }
@@ -66,36 +71,27 @@ public class Client implements Closeable {
 
     }
 
-    public void upload(String fileName) {
-        FileInputStream fileInputStream;
-        DataOutputStream dataOutputStream;
+    public void upload(String fileName) throws IOException {
         File file = new File(fileName);
+        System.out.println("upload1");
         if (file.exists()) {
-            if (socket.isConnected()) {
-                try {
-                    fileInputStream = new FileInputStream(file);
-                    dataOutputStream = new DataOutputStream(socket.getOutputStream());
+            dataOutputStream = new DataOutputStream(socket.getOutputStream());
+            System.out.println("upload2");
+            fileInputStream = new FileInputStream(file.getAbsolutePath());
+            byte[] buffer = fileName.getBytes();
 
-                    String name = file.getName();
-                    byte[] fileNameBytes = name.getBytes();
-
-                    byte[] fileContentBytes = new byte[(int) file.length()];
-                    fileInputStream.read(fileContentBytes);
-
-                    dataOutputStream.writeInt(fileNameBytes.length);
-                    dataOutputStream.write(fileNameBytes);
-
-                    dataOutputStream.writeInt(fileContentBytes.length);
-                    dataOutputStream.write(fileContentBytes);
-                } catch (IOException err) {
-                    err.printStackTrace();
-                }
+            int read;
+            while ((read = fileInputStream.read(buffer)) > 0) {
+                dataOutputStream.write(buffer, 0, read);
             }
+            System.out.println("upload3");
         } else {
             System.out.println("This file does not exist!");
         }
-
+        System.out.println("upload4");
+        close();
     }
+
 
     public void download() {
 
@@ -146,7 +142,7 @@ public class Client implements Closeable {
         if (bufferedReader != null && bufferedWriter != null && socket != null) {
             bufferedReader.close();
             bufferedWriter.close();
-            socket.close();
+            //socket.close();
         } else {
             System.err.println("Could not close one of the streams!");
         }
@@ -154,12 +150,9 @@ public class Client implements Closeable {
 
 
     public static void main(String[] args) throws IOException {
-        Socket socket = new Socket("localhost", 1881);
-        Client client = new Client(socket);
+        Client client = new Client();
         while (true) {
             client.clientFunctions();
         }
-
-
     }
 }
