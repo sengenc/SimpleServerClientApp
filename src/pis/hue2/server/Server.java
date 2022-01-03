@@ -9,6 +9,8 @@ import java.util.ArrayList;
 public class Server implements Closeable {
     private static DataInputStream dataInputStream = null;
     private static FileOutputStream fileOutputStream = null;
+    private FileInputStream fileInputStream;
+    private DataOutputStream dataOutputStream;
     private static ServerSocket serverSocket = null;
     private static Socket socket = null;
 
@@ -35,9 +37,9 @@ public class Server implements Closeable {
         bufferedWriter = new BufferedWriter(outputStreamWriter);
         String input = bufferedReader.readLine();
         String[] arr = input.split(" ",2);
-        System.out.println(arr[0]+ "  arr[0]");
             switch (arr[0]) {
                 case "LST":
+                    System.out.println("list server giris");
                     listFiles();
                     break;
                 case "PUT":
@@ -45,6 +47,8 @@ public class Server implements Closeable {
                     System.out.println(arr[1] + "do we come here");
                     saveFiles(arr[1]);
                     break;
+                case "GET":
+                    serverUpload("C:\\Users\\Berkay\\Desktop\\" + arr[1]);
                 default:
                     System.out.println("DEFAULT!!!");
 
@@ -60,8 +64,6 @@ public class Server implements Closeable {
                 socket = serverSocket.accept();
                 System.out.println("startservercalled");
                 regulateServer();
-
-
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -72,6 +74,7 @@ public class Server implements Closeable {
     }
 
     public void listFiles() throws IOException {
+        System.out.println("listfiles server1");
         try {
             outputStreamWriter = new OutputStreamWriter(socket.getOutputStream());
             inputStreamReader = new InputStreamReader(socket.getInputStream());
@@ -79,14 +82,17 @@ public class Server implements Closeable {
             e.printStackTrace();
             close();
         }
+        System.out.println("listfiles server2");
         bufferedReader = new BufferedReader(inputStreamReader);
         bufferedWriter = new BufferedWriter(outputStreamWriter);
-        for (MyFile myFile : filesStored) {
-            bufferedWriter.write(myFile.getName());
+        for (int i = 0; i < filesStored.size(); i++) {
+            bufferedWriter.write(filesStored.get(i).getName());
+            System.out.println(filesStored.get(i).getName());
+            System.out.println("listfiles server2.5");
             bufferedWriter.newLine();
             bufferedWriter.flush();
-
         }
+        System.out.println("listfiles server3");
     }
 
     public void saveFiles(String path) throws IOException {
@@ -98,12 +104,31 @@ public class Server implements Closeable {
             while ((read = dataInputStream.read(buffer)) > 0) {
                 fileOutputStream.write(buffer, 0, read);
             }
-            filesStored.add(new MyFile(path, new byte[dataInputStream.readInt()]));
-
+            filesStored.add(new MyFile(path, new byte[8192]));
         } catch (IOException e) {
             e.printStackTrace();
             close();
         }
+        close();
+    }
+
+    public void serverUpload(String fileName) throws IOException {
+        File file = new File(fileName);
+        System.out.println("upload1");
+        if (file.exists()) {
+            dataOutputStream = new DataOutputStream(socket.getOutputStream());
+            System.out.println("upload2");
+            fileInputStream = new FileInputStream(file.getAbsolutePath());
+            byte[] buffer = fileName.getBytes();
+            int read;
+            while ((read = fileInputStream.read(buffer)) > 0) {
+                dataOutputStream.write(buffer, 0, read);
+            }
+            System.out.println("upload3");
+        } else {
+            System.out.println("This file does not exist!");
+        }
+        System.out.println("upload4");
         close();
     }
 

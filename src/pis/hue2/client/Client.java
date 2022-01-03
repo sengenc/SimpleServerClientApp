@@ -1,12 +1,16 @@
 package pis.hue2.client;
 
-import javax.xml.crypto.Data;
+import pis.hue2.server.MyFile;
+
 import java.io.*;
 import java.net.Socket;
 import java.util.Scanner;
 
 
 public class Client implements Closeable {
+    private static DataInputStream dataInputStream = null;
+    private static FileOutputStream fileOutputStream = null;
+
     private static Socket socket;
     private BufferedReader bufferedReader;
     private BufferedWriter bufferedWriter;
@@ -33,6 +37,17 @@ public class Client implements Closeable {
                 clientConnected();
                 break;
             case "LST":
+                inputStreamReader = new InputStreamReader(socket.getInputStream());
+                outputStreamWriter = new OutputStreamWriter(socket.getOutputStream());
+
+                bufferedReader = new BufferedReader(inputStreamReader);
+                bufferedWriter = new BufferedWriter(outputStreamWriter);
+
+                bufferedWriter.write(input);
+                bufferedWriter.newLine();
+                bufferedWriter.flush();
+                System.out.println("list giris");
+                listFiles();
                 break;
             case "PUT":
                 inputStreamReader = new InputStreamReader(socket.getInputStream());
@@ -49,8 +64,21 @@ public class Client implements Closeable {
                 upload("C:\\Users\\Berkay\\Desktop\\" + arr[1]);
                 break;
             case "GET":
+                inputStreamReader = new InputStreamReader(socket.getInputStream());
+                outputStreamWriter = new OutputStreamWriter(socket.getOutputStream());
+
+                bufferedReader = new BufferedReader(inputStreamReader);
+                bufferedWriter = new BufferedWriter(outputStreamWriter);
+
+                bufferedWriter.write(input);
+                bufferedWriter.newLine();
+                bufferedWriter.flush();
+
+                download(arr[1]);
                 break;
             case "DEL":
+
+
                 break;
             case "DAT":
                 break;
@@ -72,7 +100,18 @@ public class Client implements Closeable {
         }
     }
 
-    public void listFiles() {
+    public void listFiles() throws IOException {
+        System.out.println("listfiles");
+        inputStreamReader = new InputStreamReader(socket.getInputStream());
+        outputStreamWriter = new OutputStreamWriter(socket.getOutputStream());
+
+        bufferedReader = new BufferedReader(inputStreamReader);
+        bufferedWriter = new BufferedWriter(outputStreamWriter);
+
+        String output;
+        while((output = bufferedReader.readLine()) != null) {
+            System.out.println(output);
+        }
 
     }
 
@@ -98,8 +137,20 @@ public class Client implements Closeable {
     }
 
 
-    public void download() {
-
+    public void download(String path) throws IOException {
+        try {
+            dataInputStream = new DataInputStream(socket.getInputStream());
+            fileOutputStream = new FileOutputStream("C:\\Users\\Berkay\\Desktop\\client\\" + path);
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = dataInputStream.read(buffer)) > 0) {
+                fileOutputStream.write(buffer, 0, read);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            close();
+        }
+        close();
     }
 
     public void deleteFile(File file) {
