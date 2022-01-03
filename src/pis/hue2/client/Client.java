@@ -12,6 +12,10 @@ public class Client implements Closeable {
     private BufferedWriter bufferedWriter;
     private FileInputStream fileInputStream;
     private DataOutputStream dataOutputStream;
+    public static final int PORT = 2023;
+    ;
+    private static Scanner scanner = new Scanner(System.in);
+
 
     InputStreamReader inputStreamReader = null;
     OutputStreamWriter outputStreamWriter = null;
@@ -21,7 +25,7 @@ public class Client implements Closeable {
         Scanner scanner = new Scanner(System.in);
         String input = scanner.nextLine();
         System.out.println("clientfun");
-        String[] arr = input.split("\\s+");
+        String[] arr = input.split(" ", 2);
 
 
         switch (arr[0]) {
@@ -42,7 +46,7 @@ public class Client implements Closeable {
                 bufferedWriter.flush();
 
                 System.out.println("putsw");
-                upload("C:\\Users\\Berkay\\Desktop\\" + arr[1]);
+                upload("C:\\Users\\arda\\Desktop\\" + arr[1]);
                 break;
             case "GET":
                 break;
@@ -58,9 +62,10 @@ public class Client implements Closeable {
 
     public void clientConnected() throws IOException {
         try {
-            System.out.println("clientcon");
-            socket = new Socket("localhost", 1992);
-            System.out.println("Connected!");
+            System.out.println("Bitte Username Eingeben: ");
+            String input = scanner.nextLine();
+            socket = new Socket("localhost", PORT);
+            System.out.println(input + " ist gerade beigetreten!");
 
         } catch (IOException e) {
             close();
@@ -97,8 +102,15 @@ public class Client implements Closeable {
 
     }
 
-    public void deleteFile() {
-
+    public void deleteFile(File file) {
+        // get directory?
+        String name = file.getName();
+        if (file.exists()) {
+            file.delete();
+            System.out.println(name + " has been deleted!");
+        } else {
+            System.err.println("Cannot delete the file is not exist!!");
+        }
     }
 
     public void toByte() {
