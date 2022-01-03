@@ -34,7 +34,7 @@ public class Server implements Closeable {
         bufferedReader = new BufferedReader(inputStreamReader);
         bufferedWriter = new BufferedWriter(outputStreamWriter);
         String input = bufferedReader.readLine();
-        String[] arr = input.split("",2);
+        String[] arr = input.split(" ",2);
         System.out.println(arr[0]+ "  arr[0]");
             switch (arr[0]) {
                 case "LST":
@@ -92,7 +92,7 @@ public class Server implements Closeable {
     public void saveFiles(String path) throws IOException {
         try {
             dataInputStream = new DataInputStream(socket.getInputStream());
-            fileOutputStream = new FileOutputStream("C:\\Users\\arda\\Desktop\\dir\\" + path);
+            fileOutputStream = new FileOutputStream("C:\\Users\\Berkay\\Desktop\\dir\\" + path);
             byte[] buffer = new byte[8192];
             int read;
             while ((read = dataInputStream.read(buffer)) > 0) {

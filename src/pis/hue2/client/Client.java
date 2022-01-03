@@ -41,12 +41,12 @@ public class Client implements Closeable {
                 bufferedReader = new BufferedReader(inputStreamReader);
                 bufferedWriter = new BufferedWriter(outputStreamWriter);
 
-                bufferedWriter.write(arr[1]);
+                bufferedWriter.write(input);
                 bufferedWriter.newLine();
                 bufferedWriter.flush();
 
                 System.out.println("putsw");
-                upload("C:\\Users\\arda\\Desktop\\" + arr[1]);
+                upload("C:\\Users\\Berkay\\Desktop\\" + arr[1]);
                 break;
             case "GET":
                 break;
