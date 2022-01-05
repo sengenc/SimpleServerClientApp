@@ -5,6 +5,7 @@ import pis.hue2.server.MyFile;
 
 import java.io.*;
 import java.net.Socket;
+import java.nio.file.Files;
 import java.util.ArrayList;
 
 
@@ -14,14 +15,11 @@ import java.util.ArrayList;
 public class ServerWorker implements Runnable, Closeable, BasicMethods {
 
     private static final ArrayList<ServerWorker> clients = new ArrayList<>();
+    private static ArrayList<MyFile> myFiles = new ArrayList<>();
     //List<Thread> serverWorker
     private final Socket socket;
     private InputStreamReader inputStreamReader = null;
     private OutputStreamWriter outputStreamWriter = null;
-    private FileOutputStream fileOutputStream = null;
-    private FileInputStream fileInputStream = null;
-    private DataInputStream dataInputStream = null;
-    private DataOutputStream dataOutputStream = null;
     private BufferedReader bufferedReader;
     private BufferedWriter bufferedWriter;
 
@@ -40,10 +38,11 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
         this.socket = socket;
         this.bufferedWriter = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
         this.bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        sendMessage("A client has joined.");
         clients.add(this);
         int workerID = 1;
         workerID++;
-        sendMessage("A client has joined.");
+
     }
 
     public void removeClient() {
@@ -57,6 +56,11 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
     @Override
     public void sendMessage(String message) {
         try {
+            inputStreamReader = new InputStreamReader(socket.getInputStream());
+            outputStreamWriter = new OutputStreamWriter(socket.getOutputStream());
+
+            bufferedReader = new BufferedReader(inputStreamReader);
+            bufferedWriter = new BufferedWriter(outputStreamWriter);
             bufferedWriter.write(message);
             bufferedWriter.newLine();
             bufferedWriter.flush();
@@ -98,35 +102,55 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
 
     @Override
     public void download(String fileName) throws IOException {
-        dataInputStream = new DataInputStream(socket.getInputStream());
-        fileOutputStream = new FileOutputStream("C:\\Users\\Berkay\\Desktop\\dir\\" + fileName);
+        DataInputStream dataInputStream = new DataInputStream(socket.getInputStream());
+        FileOutputStream fileOutputStream = new FileOutputStream("C:\\Users\\Berkay\\Desktop\\dir\\" + fileName);
         byte[] buffer = new byte[8192];
         int read;
+        myFiles.add(new MyFile(fileName, new byte[dataInputStream.readInt()]));
         while ((read = dataInputStream.read(buffer)) > 0) {
             fileOutputStream.write(buffer, 0, read);
         }
+        //run();
+    }
+
+
+    public void downloadNew(String fileName) throws IOException {
+        byte[] aByte = new byte[1];
+        InputStream is = socket.getInputStream();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        if (is != null) {
+            FileOutputStream fileOutputStream = new FileOutputStream("C:\\Users\\Berkay\\Desktop\\dir\\" + fileName);
+            BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(fileOutputStream);
+            int bytesRead;
+            do {
+                baos.write(aByte);
+                bytesRead = is.read(aByte);
+            } while (bytesRead != -1);
+
+            bufferedOutputStream.write(baos.toByteArray());
+            bufferedOutputStream.flush();
+        }
+
+        //run();
     }
 
     @Override
     public void upload(String fileName) throws IOException {
         File file = new File(fileName);
-        System.out.println("upload1");
         if (file.exists()) {
-            dataOutputStream = new DataOutputStream(socket.getOutputStream());
-            System.out.println("upload2");
-            fileInputStream = new FileInputStream(file.getAbsolutePath());
+            DataOutputStream dataOutputStream = new DataOutputStream(socket.getOutputStream());
+            FileInputStream fileInputStream = new FileInputStream(file.getAbsolutePath());
             byte[] buffer = fileName.getBytes();
-
             int read;
             while ((read = fileInputStream.read(buffer)) > 0) {
                 dataOutputStream.write(buffer, 0, read);
             }
-            System.out.println("upload3");
+            sendMessage(Instruction.ACK.toString());
         } else {
             System.out.println("This file does not exist!");
-            close();
+            sendMessage(Instruction.DND.toString());
         }
-        System.out.println("upload4");
+
     }
 
 
@@ -167,29 +191,62 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
                     case "ACK":
                         //ACK GET/LST
                         break;
-                    case "LST":
-                        sendMessage(Instruction.ACK.toString());
+                    case "LST":                                                     //SONSUZ DONGUYE GIRIYOR
+                        //sendMessage(Instruction.ACK.toString());
+                        listFiles();
                         break;
                     case "PUT":
                         sendMessage(Instruction.ACK.toString());
-                        download(arr[1]);
+                        downloadNew(arr[1]);
                         break;
                     case "GET":
-                        sendMessage(Instruction.ACK.toString());
+                        upload("C:\\Users\\Berkay\\Desktop\\dir\\" + arr[1]);
                         break;
                     case "DEL":
-                        sendMessage(Instruction.ACK.toString());
+                       // sendMessage(Instruction.ACK.toString());
+                        deleteFile(arr[1]);
                         break;
                     case "DAT":
                         sendMessage(Instruction.ACK.toString());
                         break;
-
                 }
             }
         } catch (IOException err) {
             err.printStackTrace();
         }
+    }
 
+    public void deleteFile(String fileName) throws IOException {
+        File file = new File("C:\\Users\\Berkay\\Desktop\\dir\\" + fileName);
+        if (file.exists()) {
+            Files.delete(file.toPath());
+            for (int i = 0; i<myFiles.size(); i++) {
+                if (myFiles.get(i).getName().equals(fileName)) {
+                    myFiles.remove(i);
+                }
+            }
+            System.out.println(fileName + " has been deleted!");
+            sendMessage(Instruction.ACK.toString());
+        } else {
+            System.err.println("Cannot delete the file is not exist!!");
+            sendMessage(Instruction.DND.toString());
+        }
+    }
+    public void listFiles() throws IOException {
+        try {
+            outputStreamWriter = new OutputStreamWriter(socket.getOutputStream());
+            inputStreamReader = new InputStreamReader(socket.getInputStream());
+            bufferedReader = new BufferedReader(inputStreamReader);
+            bufferedWriter = new BufferedWriter(outputStreamWriter);
+        } catch (IOException e) {
+            e.printStackTrace();
+            close();
+        }
+        for (int i = 0; i < myFiles.size(); i++) {
+            bufferedWriter.write(myFiles.get(i).getName());
+            bufferedWriter.newLine();
+            bufferedWriter.flush();
+        }
     }
 
     /**

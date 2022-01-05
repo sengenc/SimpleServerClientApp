@@ -20,7 +20,7 @@ public class Server implements Closeable, Runnable {
     OutputStreamWriter outputStreamWriter = null;
     BufferedReader bufferedReader = null;
     BufferedWriter bufferedWriter = null;
-    public static final int PORT = 2234;
+    public static final int PORT = 2239;
 
 
     private final ArrayList<MyFile> filesStored = new ArrayList<>();
@@ -82,25 +82,20 @@ public class Server implements Closeable, Runnable {
     }
 
     public void listFiles() throws IOException {
-        System.out.println("listfiles server1");
         try {
             outputStreamWriter = new OutputStreamWriter(socket.getOutputStream());
             inputStreamReader = new InputStreamReader(socket.getInputStream());
+            bufferedReader = new BufferedReader(inputStreamReader);
+            bufferedWriter = new BufferedWriter(outputStreamWriter);
         } catch (IOException e) {
             e.printStackTrace();
             close();
         }
-        System.out.println("listfiles server2");
-        bufferedReader = new BufferedReader(inputStreamReader);
-        bufferedWriter = new BufferedWriter(outputStreamWriter);
         for (int i = 0; i < filesStored.size(); i++) {
             bufferedWriter.write(filesStored.get(i).getName());
-            System.out.println(filesStored.get(i).getName());
-            System.out.println("listfiles server2.5");
             bufferedWriter.newLine();
             bufferedWriter.flush();
         }
-        System.out.println("listfiles server3");
     }
 
 //    public void saveFiles(String path) throws IOException {

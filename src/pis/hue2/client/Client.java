@@ -14,15 +14,11 @@ import java.util.Scanner;
 
 
 public class Client implements Closeable, BasicMethods {
-    private static DataInputStream dataInputStream = null;
-    private static FileOutputStream fileOutputStream = null;
-
+    BufferedOutputStream outToClient = null;
     private Socket socket;
     private BufferedReader bufferedReader;
     private BufferedWriter bufferedWriter;
-    private FileInputStream fileInputStream;
-    private DataOutputStream dataOutputStream;
-    public static final int PORT = 2234;
+    public static final int PORT = 2239;
     private static Scanner scanner = new Scanner(System.in);
 
     static JList jList;
@@ -196,6 +192,11 @@ public class Client implements Closeable, BasicMethods {
     @Override
     public void sendMessage(String message) {
         try {
+            inputStreamReader = new InputStreamReader(socket.getInputStream());
+            outputStreamWriter = new OutputStreamWriter(socket.getOutputStream());
+
+            bufferedReader = new BufferedReader(inputStreamReader);
+            bufferedWriter = new BufferedWriter(outputStreamWriter);
             bufferedWriter.write(message);
             bufferedWriter.newLine();
             bufferedWriter.flush();
@@ -208,6 +209,12 @@ public class Client implements Closeable, BasicMethods {
     public String receiveMessage() {
         String input = null;
         try {
+            inputStreamReader = new InputStreamReader(socket.getInputStream());
+            outputStreamWriter = new OutputStreamWriter(socket.getOutputStream());
+
+            bufferedReader = new BufferedReader(inputStreamReader);
+            bufferedWriter = new BufferedWriter(outputStreamWriter);
+
             input = bufferedReader.readLine();
         } catch (IOException err) {
             err.printStackTrace();
@@ -217,17 +224,12 @@ public class Client implements Closeable, BasicMethods {
 
     @Override
     public void download(String fileName) throws IOException {
-        try {
-            dataInputStream = new DataInputStream(socket.getInputStream());
-            fileOutputStream = new FileOutputStream("C:\\Users\\Berkay\\Desktop\\client\\" + fileName);
-            byte[] buffer = new byte[8192];
-            int read;
-            while ((read = dataInputStream.read(buffer)) > 0) {
-                fileOutputStream.write(buffer, 0, read);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-            close();
+        DataInputStream dataInputStream = new DataInputStream(socket.getInputStream());
+        FileOutputStream fileOutputStream = new FileOutputStream("C:\\Users\\Berkay\\Desktop\\client\\" + fileName);
+        byte[] buffer = new byte[8192];
+        int read;
+        while ((read = dataInputStream.read(buffer)) > 0) {
+            fileOutputStream.write(buffer, 0, read);
         }
     }
 
@@ -253,26 +255,28 @@ public class Client implements Closeable, BasicMethods {
 //        System.out.println("upload4");
 //    }
 
-//    @Override
-//    public void upload(String fileName) throws IOException {
-//        File file = new File(fileName);
-//        while (true) {
-//            byte[] mybytearray = new byte[(int) file.length()];
-//            BufferedInputStream bis = new BufferedInputStream(new FileInputStream(file));
-//            bis.read(mybytearray, 0, mybytearray.length);
-//            dataOutputStream = new DataOutputStream(socket.getOutputStream());
-//            dataOutputStream.write(mybytearray, 0, mybytearray.length);
-//        }
-//    }
+
+    public void uploadNew(String fileName) throws IOException {
+        outToClient = new BufferedOutputStream(socket.getOutputStream());
+        File file = new File(fileName);
+        byte[] mybytearray = new byte[(int) file.length()];
+
+        FileInputStream fileInputStream = new FileInputStream(file);
+        BufferedInputStream bis = new BufferedInputStream(fileInputStream);
+        bis.read(mybytearray, 0, mybytearray.length);
+        outToClient.write(mybytearray,0,mybytearray.length);
+        outToClient.flush();
+        return;
+    }
 
     @Override
     public void upload(String fileName) throws IOException {
         File file = new File(fileName);
         System.out.println("upload1");
         if (file.exists()) {
-            dataOutputStream = new DataOutputStream(socket.getOutputStream());
+            DataOutputStream dataOutputStream = new DataOutputStream(socket.getOutputStream());
             System.out.println("upload2");
-            fileInputStream = new FileInputStream(file.getAbsolutePath());
+            FileInputStream fileInputStream = new FileInputStream(file.getAbsolutePath());
             byte[] buffer = fileName.getBytes();
             int read;
             while ((read = fileInputStream.read(buffer)) > 0) {
@@ -288,6 +292,7 @@ public class Client implements Closeable, BasicMethods {
 
     public void clientFunctions() throws IOException {
         while (true) {
+            listenForMessage();
             Scanner scanner = new Scanner(System.in);
             String input = scanner.nextLine();
             System.out.println("clientfun");
@@ -298,48 +303,20 @@ public class Client implements Closeable, BasicMethods {
                     clientConnected();
                     break;
                 case "LST":
-                    inputStreamReader = new InputStreamReader(socket.getInputStream());
-                    outputStreamWriter = new OutputStreamWriter(socket.getOutputStream());
-
-                    bufferedReader = new BufferedReader(inputStreamReader);
-                    bufferedWriter = new BufferedWriter(outputStreamWriter);
-
-                    bufferedWriter.write(input);
-                    bufferedWriter.newLine();
-                    bufferedWriter.flush();
-                    System.out.println("list giris");
+                    sendMessage("LST");
                     listFiles();
                     break;
                 case "PUT":
-                    inputStreamReader = new InputStreamReader(socket.getInputStream());
-                    outputStreamWriter = new OutputStreamWriter(socket.getOutputStream());
-
-                    bufferedReader = new BufferedReader(inputStreamReader);
-                    bufferedWriter = new BufferedWriter(outputStreamWriter);
-
-                    bufferedWriter.write(input);
-                    bufferedWriter.newLine();
-                    bufferedWriter.flush();
-
+                    sendMessage(input);
                     System.out.println("putsw");
-                    upload("C:\\Users\\Berkay\\Desktop\\" + arr[1]);
+                    uploadNew("C:\\Users\\Berkay\\Desktop\\" + arr[1]);
                     break;
                 case "GET":
-                    inputStreamReader = new InputStreamReader(socket.getInputStream());
-                    outputStreamWriter = new OutputStreamWriter(socket.getOutputStream());
-
-                    bufferedReader = new BufferedReader(inputStreamReader);
-                    bufferedWriter = new BufferedWriter(outputStreamWriter);
-
-                    bufferedWriter.write(input);
-                    bufferedWriter.newLine();
-                    bufferedWriter.flush();
-
+                    sendMessage(input);
                     download(arr[1]);
                     break;
                 case "DEL":
-
-
+                    sendMessage(input);
                     break;
                 case "DAT":
                     break;
@@ -354,7 +331,7 @@ public class Client implements Closeable, BasicMethods {
             socket = new Socket("localhost", PORT);
             System.out.println("Joined");
         } catch (IOException e) {
-            close();
+            //close();
         }
     }
 
@@ -369,17 +346,6 @@ public class Client implements Closeable, BasicMethods {
         String output;
         while ((output = bufferedReader.readLine()) != null) {
             System.out.println(output);
-        }
-    }
-
-    public void deleteFile(File file) {
-        // get directory?
-        String name = file.getName();
-        if (file.exists()) {
-            file.delete();
-            System.out.println(name + " has been deleted!");
-        } else {
-            System.err.println("Cannot delete the file is not exist!!");
         }
     }
 
@@ -424,7 +390,6 @@ public class Client implements Closeable, BasicMethods {
             @Override
             public void run() {
                 try {
-                    client.listenForMessage();
                     client.clientFunctions();
                 } catch (IOException e) {
                     e.printStackTrace();
