@@ -1,5 +1,8 @@
 package pis.hue2.client;
 
+import pis.hue2.common.BasicMethods;
+import pis.hue2.server.MyFile;
+
 import java.io.*;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -8,9 +11,10 @@ import java.util.ArrayList;
 /**
  * @author ardasengenc
  */
-public class ServerWorker implements Runnable, Closeable {
+public class ServerWorker implements Runnable, Closeable, BasicMethods {
 
     private static final ArrayList<ServerWorker> clients = new ArrayList<>();
+    //List<Thread> serverWorker
     private final Socket socket;
     private InputStreamReader inputStreamReader = null;
     private OutputStreamWriter outputStreamWriter = null;
@@ -18,6 +22,8 @@ public class ServerWorker implements Runnable, Closeable {
     private FileInputStream fileInputStream = null;
     private DataInputStream dataInputStream = null;
     private DataOutputStream dataOutputStream = null;
+    private BufferedReader bufferedReader;
+    private BufferedWriter bufferedWriter;
 
     /**
      * muss thread sein, brauch eine WorkerID mit einer Liste (threadsicher)
@@ -25,22 +31,19 @@ public class ServerWorker implements Runnable, Closeable {
      * wenn zb dsc kommt, macht brake und socket.close()
      * wenn DEL, brake und wieder while() loop
      * nutzt von der gemeins. Interface nutzt die operationen wie zb readFile() sendFile()
+     *
      * @param socket
      * @throws IOException
      */
 
     public ServerWorker(Socket socket) throws IOException {
         this.socket = socket;
-        try {
-            inputStreamReader = new InputStreamReader(socket.getInputStream());
-            outputStreamWriter = new OutputStreamWriter(socket.getOutputStream());
-            clients.add(this);
-        } catch (IOException e) {
-            e.printStackTrace();
-            close();
-        }
-
-
+        this.bufferedWriter = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+        this.bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        clients.add(this);
+        int workerID = 1;
+        workerID++;
+        sendMessage("A client has joined.");
     }
 
     public void removeClient() {
@@ -50,6 +53,82 @@ public class ServerWorker implements Runnable, Closeable {
             System.out.println("Nobody is in the room!");
         }
     }
+
+    @Override
+    public void sendMessage(String message) {
+        try {
+            bufferedWriter.write(message);
+            bufferedWriter.newLine();
+            bufferedWriter.flush();
+        } catch (IOException err) {
+            err.printStackTrace();
+        }
+    }
+
+    @Override
+    public String receiveMessage() {
+        String input = null;
+        try {
+            input = bufferedReader.readLine();
+        } catch (IOException err) {
+            err.printStackTrace();
+        }
+        return input;
+    }
+
+//    @Override
+//    public void download(String fileName) throws IOException {
+//        try {
+//            dataInputStream = new DataInputStream(socket.getInputStream());
+//            fileOutputStream = new FileOutputStream("C:\\Users\\Berkay\\Desktop\\dir\\" + fileName);
+//            byte[] buffer = new byte[8192];
+//            int read = dataInputStream.read(buffer);
+//
+//            sendMessage("mesaj server down dis " + read);
+//            while (read > 0) {
+//                System.out.println("server down");
+//                sendMessage("mesaj server down ic");
+//                fileOutputStream.write(buffer, 0, read);
+//            }
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//            close();
+//        }
+//    }
+
+    @Override
+    public void download(String fileName) throws IOException {
+        dataInputStream = new DataInputStream(socket.getInputStream());
+        fileOutputStream = new FileOutputStream("C:\\Users\\Berkay\\Desktop\\dir\\" + fileName);
+        byte[] buffer = new byte[8192];
+        int read;
+        while ((read = dataInputStream.read(buffer)) > 0) {
+            fileOutputStream.write(buffer, 0, read);
+        }
+    }
+
+    @Override
+    public void upload(String fileName) throws IOException {
+        File file = new File(fileName);
+        System.out.println("upload1");
+        if (file.exists()) {
+            dataOutputStream = new DataOutputStream(socket.getOutputStream());
+            System.out.println("upload2");
+            fileInputStream = new FileInputStream(file.getAbsolutePath());
+            byte[] buffer = fileName.getBytes();
+
+            int read;
+            while ((read = fileInputStream.read(buffer)) > 0) {
+                dataOutputStream.write(buffer, 0, read);
+            }
+            System.out.println("upload3");
+        } else {
+            System.out.println("This file does not exist!");
+            close();
+        }
+        System.out.println("upload4");
+    }
+
 
     /**
      * When an object implementing interface {@code Runnable} is used
@@ -64,64 +143,54 @@ public class ServerWorker implements Runnable, Closeable {
      */
     @Override
     public void run() {
-        InputStream inp = null;
-        BufferedReader brinp = null;
-        DataOutputStream out = null;
         try {
-            inp = socket.getInputStream();
-            brinp = new BufferedReader(new InputStreamReader(inp));
-            out = new DataOutputStream(socket.getOutputStream());
-        } catch (IOException e) {
-            return;
-        }
-        String line;
-        while (true) {
-            try {
-                line = brinp.readLine();
-                if ((line == null) || line.equalsIgnoreCase("QUIT")) {
-                    //   socket.close();
-                    return;
-                } else {
-                    out.writeBytes(line + "\n\r");
-                    out.flush();
+            while (true) {
+                String input = receiveMessage();
+                String[] arr = input.split(" ", 2);
+                switch (arr[0]) {
+                    case "CON":
+                        if (socket.isConnected()) {
+                            sendMessage(Instruction.ACK.toString());
+                        } else {
+                            sendMessage(Instruction.DND.toString());
+                            try {
+                                socket.close();
+                            } catch (IOException err) {
+                                err.printStackTrace();
+                            }
+                        }
+                        break;
+                    case "DSC":
+                        sendMessage(Instruction.DSC.toString());
+                        socket.close();
+                        break;
+                    case "ACK":
+                        //ACK GET/LST
+                        break;
+                    case "LST":
+                        sendMessage(Instruction.ACK.toString());
+                        break;
+                    case "PUT":
+                        sendMessage(Instruction.ACK.toString());
+                        download(arr[1]);
+                        break;
+                    case "GET":
+                        sendMessage(Instruction.ACK.toString());
+                        break;
+                    case "DEL":
+                        sendMessage(Instruction.ACK.toString());
+                        break;
+                    case "DAT":
+                        sendMessage(Instruction.ACK.toString());
+                        break;
+
                 }
-            } catch (IOException e) {
-                e.printStackTrace();
-                return;
             }
+        } catch (IOException err) {
+            err.printStackTrace();
         }
+
     }
-
-//    public void run() {
-//        while (socket.isConnected()) {
-//            try {
-//                dataOutputStream = new DataOutputStream(socket.getOutputStream());
-//
-//                fileInputStream = new FileInputStream(socket.getInputStream().toString());
-//
-//
-//                byte[] buffer = new byte[8192];
-//                int read;
-//                try {
-//                    while ((read = fileInputStream.read(buffer)) > 0) {
-//                        dataOutputStream.write(buffer, 0, read);
-//                    }
-//                    try {
-//                        Thread.sleep(1000);
-//                    } catch (InterruptedException e) {
-//                        e.printStackTrace();
-//                    }
-//
-//                }catch (IOException eee) {
-//                    eee.printStackTrace();
-//                }
-//            } catch (IOException err)  {
-//                err.printStackTrace();
-//            }
-//        }
-//    }
-
-
 
     /**
      * Closes this stream and releases any system resources associated
