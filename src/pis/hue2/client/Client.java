@@ -383,7 +383,7 @@ public class Client implements Closeable, BasicMethods {
     }
 
     public static void main(String[] args) throws IOException {
-        Socket socket = new Socket("localhost", PORT);
+        Socket socket = new Socket("127.0.0.1", PORT);
         Client client = new Client(socket);
 
         SwingUtilities.invokeLater(new Runnable() {
