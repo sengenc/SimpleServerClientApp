@@ -2,8 +2,13 @@ package pis.hue2.client;
 
 import pis.hue2.server.MyFile;
 
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.*;
 import java.net.Socket;
+import java.util.Arrays;
 import java.util.Scanner;
 
 
@@ -17,12 +22,172 @@ public class Client implements Closeable {
     private FileInputStream fileInputStream;
     private DataOutputStream dataOutputStream;
     public static final int PORT = 2023;
-    ;
     private static Scanner scanner = new Scanner(System.in);
 
+    static JList jList;
+    final File[] fileToSend = new File[1];
 
     InputStreamReader inputStreamReader = null;
     OutputStreamWriter outputStreamWriter = null;
+
+    public void makeGUI() {
+        JFrame jFrame = new JFrame("Client");
+
+        jFrame.setSize(500, 500);
+        jFrame.setLayout(new FlowLayout(FlowLayout.CENTER));
+        jFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+        String[] entries = new String[10];
+
+        JButton jbConnect = new JButton("Connect");
+        JButton jbChooseFile = new JButton("Choose File");
+        JButton jbSend = new JButton("Send");
+        JButton jbList = new JButton("List");
+        JButton jbDisconnect = new JButton("Disconnect");
+        JButton jbRemove = new JButton("Remove");
+        JButton jbGet = new JButton("Get");
+
+
+
+        jFrame.add(jbConnect);
+        jFrame.add(jbChooseFile);
+        jFrame.add(jbSend);
+        jFrame.add(jbList);
+        jFrame.add(jbDisconnect);
+        jFrame.add(jbRemove);
+        jFrame.add(jbGet);
+
+        jbConnect.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                try {
+                    clientConnected();
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+            }
+        });
+
+        jbChooseFile.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                JFileChooser fileChooser = new JFileChooser();
+                fileChooser.setDialogTitle("Choose a file to send");
+
+                if (fileChooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
+                    fileToSend[0] = fileChooser.getSelectedFile();
+                }
+            }
+        });
+
+        jbSend.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (fileToSend[0] == null) {
+                    JOptionPane.showMessageDialog(jFrame, "Please choose a file first", "WARNING", JOptionPane.ERROR_MESSAGE);
+                } else {
+                    try {
+                        inputStreamReader = new InputStreamReader(socket.getInputStream());
+                        outputStreamWriter = new OutputStreamWriter(socket.getOutputStream());
+                        bufferedReader = new BufferedReader(inputStreamReader);
+                        bufferedWriter = new BufferedWriter(outputStreamWriter);
+                        System.out.println(fileToSend[0].getAbsolutePath());
+                        bufferedWriter.write("PUT " + fileToSend[0].getName());
+                        bufferedWriter.newLine();
+                        bufferedWriter.flush();
+
+                        upload(fileToSend[0].getAbsolutePath());
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
+                    }
+                }
+                SwingUtilities.updateComponentTreeUI(jFrame); //bunu yazanin allahini yerim
+            }
+
+        });
+
+        jbList.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                try {
+                    inputStreamReader = new InputStreamReader(socket.getInputStream());
+                    outputStreamWriter = new OutputStreamWriter(socket.getOutputStream());
+                    bufferedReader = new BufferedReader(inputStreamReader);
+                    bufferedWriter = new BufferedWriter(outputStreamWriter);
+                    bufferedWriter.write(Instruction.LST.toString());
+                    bufferedWriter.newLine();
+                    bufferedWriter.flush();
+
+                    String output;
+                    int i = 0;
+                    while((output = bufferedReader.readLine()) != null) {
+                        entries[i] = output;
+                        i++;
+                    }
+
+                    System.out.println(Arrays.toString(entries));
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+                jList = new JList(entries);
+                // System.out.println(Arrays.toString(entries) + " try disi");
+                SwingUtilities.updateComponentTreeUI(jFrame);
+
+            }
+        });
+
+        jbRemove.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                SwingUtilities.updateComponentTreeUI(jFrame); //bunu yazanin allahini yerim
+                try {
+                    inputStreamReader = new InputStreamReader(socket.getInputStream());
+                    outputStreamWriter = new OutputStreamWriter(socket.getOutputStream());
+                    bufferedReader = new BufferedReader(inputStreamReader);
+                    bufferedWriter = new BufferedWriter(outputStreamWriter);
+                    System.out.println("remove buton");
+                    String temp = (String) jList.getSelectedValue();
+                    int num = jList.getSelectedIndex() + 1;
+                    System.out.println(temp);
+                    System.out.println(num);
+//                        bufferedWriter.write(Instruction.DEL + " " + num);
+//                        bufferedWriter.newLine();
+//                        bufferedWriter.flush();
+                } catch (IOException er) {
+                    er.printStackTrace();
+                }
+
+            }
+        });
+
+        jbDisconnect.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                try {
+                    inputStreamReader = new InputStreamReader(socket.getInputStream());
+                    outputStreamWriter = new OutputStreamWriter(socket.getOutputStream());
+                    bufferedReader = new BufferedReader(inputStreamReader);
+                    bufferedWriter = new BufferedWriter(outputStreamWriter);
+
+                    bufferedWriter.write(Instruction.DSC.toString());
+                    bufferedWriter.newLine();
+                    bufferedWriter.flush();
+
+                    String output = bufferedReader.readLine();
+
+                } catch (IOException err) {
+                    err.printStackTrace();
+                }
+            }
+        });
+        jList = new JList(entries);
+        jList.setPreferredSize(new Dimension(300,300));
+        jList.setSelectedIndex(0);
+        jFrame.add(jList);
+        //SwingUtilities.updateComponentTreeUI(jFrame); //swing.invokeLater eventDispatchThread (auch klausurrelevant)
+        jFrame.setVisible(true);
+
+    }
 
 
     public void clientFunctions() throws IOException {
