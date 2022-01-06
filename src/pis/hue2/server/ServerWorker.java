@@ -20,29 +20,14 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
     private final Socket socket;
     private InputStreamReader inputStreamReader = null;
     private OutputStreamWriter outputStreamWriter = null;
-    private BufferedReader bufferedReader;
-    private BufferedWriter bufferedWriter;
+    private BufferedReader bufferedReader = null;
+    private BufferedWriter bufferedWriter = null;
 
-    /**
-     * muss thread sein, brauch eine WorkerID mit einer Liste (threadsicher)
-     * im clientpool gibt es auch ne run() mit switch-case anweisungen und die lesen Instructions
-     * wenn zb dsc kommt, macht brake und socket.close()
-     * wenn DEL, brake und wieder while() loop
-     * nutzt von der gemeins. Interface nutzt die operationen wie zb readFile() sendFile()
-     *
-     * @param socket
-     * @throws IOException
-     */
+
 
     public ServerWorker(Socket socket) throws IOException {
         this.socket = socket;
-        this.bufferedWriter = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
-        this.bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-        sendMessage("A client has joined.");
         clients.add(this);
-        int workerID = 1;
-        workerID++;
-
     }
 
     public void removeClient() {
@@ -80,25 +65,6 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
         return input;
     }
 
-//    @Override
-//    public void download(String fileName) throws IOException {
-//        try {
-//            dataInputStream = new DataInputStream(socket.getInputStream());
-//            fileOutputStream = new FileOutputStream("C:\\Users\\Berkay\\Desktop\\dir\\" + fileName);
-//            byte[] buffer = new byte[8192];
-//            int read = dataInputStream.read(buffer);
-//
-//            sendMessage("mesaj server down dis " + read);
-//            while (read > 0) {
-//                System.out.println("server down");
-//                sendMessage("mesaj server down ic");
-//                fileOutputStream.write(buffer, 0, read);
-//            }
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//            close();
-//        }
-//    }
 
     @Override
     public void download(String fileName) throws IOException {
@@ -191,7 +157,7 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
                         }
                         break;
                     case "DSC":
-                        if (receiveMessage().equals(Instruction.LST.toString())) {
+                        if (receiveMessage().equals(Instruction.DSC.toString())) {
                             sendMessage(Instruction.DSC.toString());
                             socket.close();
                         }
@@ -199,7 +165,7 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
                     case "LST":                                                     //SONSUZ DONGUYE GIRIYOR
                         if (receiveMessage().equals(Instruction.LST.toString())) {
                             sendMessage(Instruction.ACK.toString());
-                            listFiles();
+                            listFiles();                                        // files.list() method??
                             sendMessage(Instruction.DAT.toString());
                         }
                         break;
@@ -228,7 +194,6 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
                             deleteFile(arr[1]);
                             sendMessage(Instruction.ACK.toString());
                         }
-
                         break;
                     case "DAT":
                         downloadNew();

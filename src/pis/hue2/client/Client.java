@@ -180,13 +180,7 @@ public class Client implements Closeable, BasicMethods {
     }
 
     public Client(Socket socket) {
-        try {
-            this.socket = socket;
-            this.bufferedWriter = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
-            this.bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-        } catch (IOException err) {
-            err.printStackTrace();
-        }
+        this.socket = socket;
     }
 
     @Override
@@ -233,27 +227,6 @@ public class Client implements Closeable, BasicMethods {
         }
     }
 
-//    @Override
-//    public void upload(String fileName) throws IOException {
-//        File file = new File(fileName);
-//        System.out.println("upload1");
-//        if (file.exists()) {
-//            dataOutputStream = new DataOutputStream(socket.getOutputStream());
-//            System.out.println("upload2");
-//            fileInputStream = new FileInputStream(file.getAbsolutePath());
-//            byte[] buffer = fileName.getBytes();
-//
-//            int read;
-//            while ((read = fileInputStream.read(buffer)) > 0) {
-//                dataOutputStream.write(buffer, 0, read);
-//            }
-//            System.out.println("upload3");
-//        } else {
-//            System.out.println("This file does not exist!");
-//            close();
-//        }
-//        System.out.println("upload4");
-//    }
 
 
     public void uploadNew(String fileName) throws IOException {
@@ -328,7 +301,7 @@ public class Client implements Closeable, BasicMethods {
                     }
                     break;
                 case "PUT":
-                    sendMessage(Instruction.PUT.toString()) ;
+                    sendMessage(Instruction.PUT.toString());
                     if (receiveMessage().equals(Instruction.ACK.toString())) {
                         uploadNew("C:\\Users\\Berkay\\Desktop\\" + arr[1]);
                         sendMessage(Instruction.DAT.toString());
@@ -339,8 +312,8 @@ public class Client implements Closeable, BasicMethods {
                     sendMessage(Instruction.GET.toString());
                     if (receiveMessage().equals(Instruction.ACK.toString())) {
                         sendMessage(Instruction.ACK.toString());
-                        sendMessage(Instruction.DAT.toString());
                         download(arr[1]);
+                        sendMessage(Instruction.DAT.toString());
                         sendMessage(Instruction.ACK.toString());
                     } else if (receiveMessage().equals(Instruction.DND.toString())) {
                         System.err.println("Connection error");
@@ -364,30 +337,15 @@ public class Client implements Closeable, BasicMethods {
             socket = new Socket("localhost", PORT);
             System.out.println("Joined");
         } catch (IOException e) {
-            //close();
+            close();
         }
     }
 
-    public void listFiles() throws IOException {
-        System.out.println("listfiles");
-        inputStreamReader = new InputStreamReader(socket.getInputStream());
-        outputStreamWriter = new OutputStreamWriter(socket.getOutputStream());
-
-        bufferedReader = new BufferedReader(inputStreamReader);
-        bufferedWriter = new BufferedWriter(outputStreamWriter);
-
-        String output;
-        while ((output = bufferedReader.readLine()) != null) {
-            System.out.println(output);
-        }
-    }
 
     @Override
     public void close() throws IOException {
-        if (bufferedReader != null && bufferedWriter != null && socket != null) {
-            bufferedReader.close();
-            bufferedWriter.close();
-            //socket.close();
+        if (socket != null) {
+            socket.close();
         } else {
             System.err.println("Could not close one of the streams!");
         }
@@ -416,7 +374,7 @@ public class Client implements Closeable, BasicMethods {
     }
 
     public static void main(String[] args) throws IOException {
-        Socket socket = new Socket("127.0.0.1", PORT);
+        Socket socket = new Socket("localhost", PORT);
         Client client = new Client(socket);
 
         SwingUtilities.invokeLater(new Runnable() {
