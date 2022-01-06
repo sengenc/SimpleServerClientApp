@@ -18,7 +18,7 @@ public class Client implements Closeable, BasicMethods {
     private Socket socket;
     private BufferedReader bufferedReader;
     private BufferedWriter bufferedWriter;
-    public static final int PORT = 2239;
+    public static final int PORT = 5024;
     private static Scanner scanner = new Scanner(System.in);
 
     static JList jList;
@@ -257,16 +257,29 @@ public class Client implements Closeable, BasicMethods {
 
 
     public void uploadNew(String fileName) throws IOException {
-        outToClient = new BufferedOutputStream(socket.getOutputStream());
-        File file = new File(fileName);
-        byte[] mybytearray = new byte[(int) file.length()];
+        BufferedOutputStream bos = new BufferedOutputStream(socket.getOutputStream());
+        DataOutputStream dos = new DataOutputStream(bos);
 
-        FileInputStream fileInputStream = new FileInputStream(file);
-        BufferedInputStream bis = new BufferedInputStream(fileInputStream);
-        bis.read(mybytearray, 0, mybytearray.length);
-        outToClient.write(mybytearray,0,mybytearray.length);
-        outToClient.flush();
-        return;
+        File file = new File(fileName);
+
+        long length = file.length();
+        dos.writeLong(length);
+
+        String name = file.getName();
+        dos.writeUTF(name);
+
+        FileInputStream fis = new FileInputStream(file);
+        BufferedInputStream bis = new BufferedInputStream(fis);
+
+        int theByte = 0;
+        while((theByte = bis.read()) != -1)
+            bos.write(theByte);
+
+        dos.flush();
+
+        //dos.close();
+       // bis.close();
+
     }
 
     @Override
@@ -279,14 +292,17 @@ public class Client implements Closeable, BasicMethods {
             FileInputStream fileInputStream = new FileInputStream(file.getAbsolutePath());
             byte[] buffer = fileName.getBytes();
             int read;
-            while ((read = fileInputStream.read(buffer)) > 0) {
+            while ((read = fileInputStream.read(buffer)) > -1) {
                 dataOutputStream.write(buffer, 0, read);
             }
             System.out.println("upload3");
+            dataOutputStream.close();   //yeni eklendi
+            fileInputStream.close();        //yeni eklendi
         } else {
             System.out.println("This file does not exist!");
         }
         System.out.println("upload4");
+
     }
 
 
@@ -320,7 +336,12 @@ public class Client implements Closeable, BasicMethods {
                     break;
                 case "DAT":
                     break;
+                case "DSC":
+                    sendMessage(Instruction.DSC.toString());
+                    socket.close();
+                    break;
                 default:
+                    System.out.println("DEFAULT");
                     break;
             }
         }

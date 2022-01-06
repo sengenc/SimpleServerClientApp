@@ -1,5 +1,6 @@
 package pis.hue2.server;
 
+import pis.hue2.client.Client;
 import pis.hue2.client.ServerWorker;
 
 import java.io.*;
@@ -20,7 +21,7 @@ public class Server implements Closeable, Runnable {
     OutputStreamWriter outputStreamWriter = null;
     BufferedReader bufferedReader = null;
     BufferedWriter bufferedWriter = null;
-    public static final int PORT = 2239;
+    public static final int PORT = 5024;
 
 
     private final ArrayList<MyFile> filesStored = new ArrayList<>();

@@ -107,31 +107,35 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
         byte[] buffer = new byte[8192];
         int read;
         myFiles.add(new MyFile(fileName, new byte[dataInputStream.readInt()]));
-        while ((read = dataInputStream.read(buffer)) > 0) {
+        while ((read = dataInputStream.read(buffer)) > -1) {
             fileOutputStream.write(buffer, 0, read);
         }
+        dataInputStream.close();  // yeni eklendi
+        fileOutputStream.close(); //yeni eklendi
         //run();
     }
 
 
-    public void downloadNew(String fileName) throws IOException {
-        byte[] aByte = new byte[1];
-        InputStream is = socket.getInputStream();
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        if (is != null) {
-            FileOutputStream fileOutputStream = new FileOutputStream("C:\\Users\\Berkay\\Desktop\\dir\\" + fileName);
-            BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(fileOutputStream);
-            int bytesRead;
-            do {
-                baos.write(aByte);
-                bytesRead = is.read(aByte);
-            } while (bytesRead != -1);
+    public void downloadNew() throws IOException {
+        BufferedInputStream bis = new BufferedInputStream(socket.getInputStream());
+        DataInputStream dis = new DataInputStream(bis);
 
-            bufferedOutputStream.write(baos.toByteArray());
-            bufferedOutputStream.flush();
-        }
+        long fileLength = dis.readLong();
+        String fileName = dis.readUTF();
 
-        //run();
+        File file = new File("C:\\Users\\Berkay\\Desktop\\dir\\" + fileName);
+
+        FileOutputStream fos = new FileOutputStream(file);
+        BufferedOutputStream bos = new BufferedOutputStream(fos);
+
+        int theByte = 0;
+        while((theByte = bis.read()) != -1)
+            bos.write(theByte);
+
+        bos.flush();
+
+//        bos.close();
+//        dis.close();
     }
 
     @Override
@@ -142,10 +146,12 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
             FileInputStream fileInputStream = new FileInputStream(file.getAbsolutePath());
             byte[] buffer = fileName.getBytes();
             int read;
-            while ((read = fileInputStream.read(buffer)) > 0) {
+            while ((read = fileInputStream.read(buffer)) > -1) {
                 dataOutputStream.write(buffer, 0, read);
             }
             sendMessage(Instruction.ACK.toString());
+            dataOutputStream.close(); //yeni eklendi
+            fileInputStream.close(); //yeni eklendi
         } else {
             System.out.println("This file does not exist!");
             sendMessage(Instruction.DND.toString());
@@ -197,7 +203,7 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
                         break;
                     case "PUT":
                         sendMessage(Instruction.ACK.toString());
-                        downloadNew(arr[1]);
+                        downloadNew();
                         break;
                     case "GET":
                         upload("C:\\Users\\Berkay\\Desktop\\dir\\" + arr[1]);
