@@ -1,8 +1,5 @@
 package pis.hue2.server;
 
-import pis.hue2.client.Client;
-import pis.hue2.client.ServerWorker;
-
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;

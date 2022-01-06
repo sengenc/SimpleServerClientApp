@@ -1,7 +1,7 @@
 package pis.hue2.client;
 
 import pis.hue2.common.BasicMethods;
-import pis.hue2.server.MyFile;
+import pis.hue2.common.Instruction;
 
 import javax.swing.*;
 import java.awt.*;
@@ -272,13 +272,13 @@ public class Client implements Closeable, BasicMethods {
         BufferedInputStream bis = new BufferedInputStream(fis);
 
         int theByte = 0;
-        while((theByte = bis.read()) != -1)
+        while ((theByte = bis.read()) != -1)
             bos.write(theByte);
 
         dos.flush();
 
         //dos.close();
-       // bis.close();
+        // bis.close();
 
     }
 
@@ -319,26 +319,38 @@ public class Client implements Closeable, BasicMethods {
                     clientConnected();
                     break;
                 case "LST":
-                    sendMessage("LST");
-                    listFiles();
+                    sendMessage(Instruction.LST.toString());
+                    if (receiveMessage().equals(Instruction.ACK.toString())) {
+                        sendMessage(Instruction.ACK.toString());
+                        if (receiveMessage().equals(Instruction.DAT.toString())) {
+                            sendMessage(Instruction.ACK.toString());
+                        }
+                    }
                     break;
                 case "PUT":
-                    sendMessage(input);
+                    sendMessage(Instruction.PUT.toString()) ;
+                    if (receiveMessage().equals(Instruction.ACK.toString())) {
+                        uploadNew("C:\\Users\\Berkay\\Desktop\\" + arr[1]);
+                        sendMessage(Instruction.DAT.toString());
+                    }
                     System.out.println("putsw");
-                    uploadNew("C:\\Users\\Berkay\\Desktop\\" + arr[1]);
                     break;
                 case "GET":
-                    sendMessage(input);
-                    download(arr[1]);
+                    sendMessage(Instruction.GET.toString());
+                    if (receiveMessage().equals(Instruction.ACK.toString())) {
+                        sendMessage(Instruction.ACK.toString());
+                        sendMessage(Instruction.DAT.toString());
+                        download(arr[1]);
+                        sendMessage(Instruction.ACK.toString());
+                    } else if (receiveMessage().equals(Instruction.DND.toString())) {
+                        System.err.println("Connection error");
+                    }
                     break;
                 case "DEL":
-                    sendMessage(input);
-                    break;
-                case "DAT":
+                    sendMessage(Instruction.DEL.toString());
                     break;
                 case "DSC":
                     sendMessage(Instruction.DSC.toString());
-                    socket.close();
                     break;
                 default:
                     System.out.println("DEFAULT");

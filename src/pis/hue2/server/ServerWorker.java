@@ -1,7 +1,7 @@
-package pis.hue2.client;
+package pis.hue2.server;
 
+import pis.hue2.common.Instruction;
 import pis.hue2.common.BasicMethods;
-import pis.hue2.server.MyFile;
 
 import java.io.*;
 import java.net.Socket;
@@ -129,7 +129,7 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
         BufferedOutputStream bos = new BufferedOutputStream(fos);
 
         int theByte = 0;
-        while((theByte = bis.read()) != -1)
+        while ((theByte = bis.read()) != -1)
             bos.write(theByte);
 
         bos.flush();
@@ -191,29 +191,49 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
                         }
                         break;
                     case "DSC":
-                        sendMessage(Instruction.DSC.toString());
-                        socket.close();
-                        break;
-                    case "ACK":
-                        //ACK GET/LST
+                        if (receiveMessage().equals(Instruction.LST.toString())) {
+                            sendMessage(Instruction.DSC.toString());
+                            socket.close();
+                        }
                         break;
                     case "LST":                                                     //SONSUZ DONGUYE GIRIYOR
-                        //sendMessage(Instruction.ACK.toString());
-                        listFiles();
+                        if (receiveMessage().equals(Instruction.LST.toString())) {
+                            sendMessage(Instruction.ACK.toString());
+                            listFiles();
+                            sendMessage(Instruction.DAT.toString());
+                        }
                         break;
                     case "PUT":
-                        sendMessage(Instruction.ACK.toString());
-                        downloadNew();
+                        if (arr[0].equals(Instruction.PUT.toString())) {
+                            sendMessage(Instruction.ACK.toString());
+                            if (receiveMessage().equals(Instruction.DAT.toString())) {
+                                sendMessage(Instruction.ACK.toString());
+                            } else {
+                                sendMessage(Instruction.DND.toString());
+                            }
+                        }
                         break;
                     case "GET":
-                        upload("C:\\Users\\Berkay\\Desktop\\dir\\" + arr[1]);
+                        if (receiveMessage().equals(Instruction.GET.toString())) {
+                            sendMessage(Instruction.ACK.toString());
+                            if (receiveMessage().equals(Instruction.ACK.toString())) {
+                                upload("C:\\Users\\Berkay\\Desktop\\dir\\" + arr[1]);
+                            }
+                        } else {
+                            sendMessage(Instruction.DND.toString());
+                        }
                         break;
                     case "DEL":
-                       // sendMessage(Instruction.ACK.toString());
-                        deleteFile(arr[1]);
+                        if (receiveMessage().equals(Instruction.GET.toString())) {
+                            deleteFile(arr[1]);
+                            sendMessage(Instruction.ACK.toString());
+                        }
+
                         break;
                     case "DAT":
-                        sendMessage(Instruction.ACK.toString());
+                        downloadNew();
+
+
                         break;
                 }
             }
@@ -226,7 +246,7 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
         File file = new File("C:\\Users\\Berkay\\Desktop\\dir\\" + fileName);
         if (file.exists()) {
             Files.delete(file.toPath());
-            for (int i = 0; i<myFiles.size(); i++) {
+            for (int i = 0; i < myFiles.size(); i++) {
                 if (myFiles.get(i).getName().equals(fileName)) {
                     myFiles.remove(i);
                 }
@@ -238,6 +258,7 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
             sendMessage(Instruction.DND.toString());
         }
     }
+
     public void listFiles() throws IOException {
         try {
             outputStreamWriter = new OutputStreamWriter(socket.getOutputStream());

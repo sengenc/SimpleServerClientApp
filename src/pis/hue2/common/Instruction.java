@@ -1,4 +1,4 @@
-package pis.hue2.client;
+package pis.hue2.common;
 
 /**
  * @author ardasengenc
