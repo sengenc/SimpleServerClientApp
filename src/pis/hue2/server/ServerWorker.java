@@ -16,7 +16,6 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
 
     private static final ArrayList<ServerWorker> clients = new ArrayList<>();
     private static ArrayList<MyFile> myFiles = new ArrayList<>();
-    //List<Thread> serverWorker
     private final Socket socket;
     private InputStreamReader inputStreamReader = null;
     private OutputStreamWriter outputStreamWriter = null;
@@ -67,18 +66,30 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
 
 
     @Override
-    public void download(String fileName) throws IOException {
-        DataInputStream dataInputStream = new DataInputStream(socket.getInputStream());
-        FileOutputStream fileOutputStream = new FileOutputStream("C:\\Users\\Berkay\\Desktop\\dir\\" + fileName);
-        byte[] buffer = new byte[8192];
-        int read;
-        myFiles.add(new MyFile(fileName, new byte[dataInputStream.readInt()]));
-        while ((read = dataInputStream.read(buffer)) > -1) {
-            fileOutputStream.write(buffer, 0, read);
+    public void download(String fileName) {
+        try {
+            int bytesRead;
+
+            DataInputStream clientData = new DataInputStream(socket.getInputStream());
+
+            fileName = clientData.readUTF();
+
+            OutputStream output = new FileOutputStream("C:\\Users\\arda\\Desktop\\dir\\" + fileName);
+            long fileSize = clientData.readLong();
+            byte[] downloadBufferServer = new byte[8192];
+            while (fileSize != 0 && (bytesRead = clientData.read(downloadBufferServer, 0, (int) Math.min(downloadBufferServer.length, fileSize))) != -1) {
+                output.write(downloadBufferServer, 0, bytesRead);
+                fileSize -= bytesRead;
+            }
+
+            output.close();
+            clientData.close();
+
+
+        } catch (IOException err) {
+            System.out.println("Exception: " + err);
         }
-        dataInputStream.close();  // yeni eklendi
-        fileOutputStream.close(); //yeni eklendi
-        //run();
+
     }
 
 
@@ -105,24 +116,28 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
     }
 
     @Override
-    public void upload(String fileName) throws IOException {
-        File file = new File(fileName);
-        if (file.exists()) {
-            DataOutputStream dataOutputStream = new DataOutputStream(socket.getOutputStream());
-            FileInputStream fileInputStream = new FileInputStream(file.getAbsolutePath());
-            byte[] buffer = fileName.getBytes();
-            int read;
-            while ((read = fileInputStream.read(buffer)) > -1) {
-                dataOutputStream.write(buffer, 0, read);
-            }
-            sendMessage(Instruction.ACK.toString());
-            dataOutputStream.close(); //yeni eklendi
-            fileInputStream.close(); //yeni eklendi
-        } else {
-            System.out.println("This file does not exist!");
-            sendMessage(Instruction.DND.toString());
-        }
+    public void upload(String fileName) {
+        try {
+            File myFile = new File("C:\\Users\\arda\\Desktop\\dir\\" + fileName);
+            byte[] uploadBufferServer = new byte[(int) myFile.length()];
 
+            FileInputStream fis = new FileInputStream(myFile);
+            BufferedInputStream bis = new BufferedInputStream(fis);
+
+            DataInputStream dis = new DataInputStream(bis);
+            dis.readFully(uploadBufferServer, 0, uploadBufferServer.length);
+
+
+            OutputStream os = socket.getOutputStream();
+
+            DataOutputStream dos = new DataOutputStream(os);
+            dos.writeUTF(myFile.getName());
+            dos.writeLong(uploadBufferServer.length);
+            dos.write(uploadBufferServer, 0, uploadBufferServer.length);
+            dos.flush();
+        } catch (Exception e) {
+            System.err.println("File existiert nicht!");
+        }
     }
 
 

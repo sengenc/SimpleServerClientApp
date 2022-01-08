@@ -217,14 +217,30 @@ public class Client implements Closeable, BasicMethods {
     }
 
     @Override
-    public void download(String fileName) throws IOException {
-        DataInputStream dataInputStream = new DataInputStream(socket.getInputStream());
-        FileOutputStream fileOutputStream = new FileOutputStream("C:\\Users\\Berkay\\Desktop\\client\\" + fileName);
-        byte[] buffer = new byte[8192];
-        int read;
-        while ((read = dataInputStream.read(buffer)) > 0) {
-            fileOutputStream.write(buffer, 0, read);
+    public void download(String fileName) {
+        try {
+            int bytesRead;
+            InputStream inputStream = socket.getInputStream();
+
+            DataInputStream clientData = new DataInputStream(inputStream);
+
+            fileName = clientData.readUTF();
+            OutputStream outputStream = new FileOutputStream("C:\\Users\\arda\\Desktop\\client\\" + fileName);
+            long fileSize = clientData.readLong();
+            byte[] downloadBufferClient = new byte[8192];
+
+            while (fileSize != 0 && (bytesRead = clientData.read(downloadBufferClient, 0, (int) Math.min(downloadBufferClient.length, fileSize))) != -1) {
+                outputStream.write(downloadBufferClient, 0, bytesRead);
+                fileSize -= bytesRead;
+            }
+
+            outputStream.close();
+            inputStream.close();
+
+        } catch (IOException ex) {
+            ex.printStackTrace();
         }
+
     }
 
 
@@ -256,26 +272,30 @@ public class Client implements Closeable, BasicMethods {
     }
 
     @Override
-    public void upload(String fileName) throws IOException {
-        File file = new File(fileName);
-        System.out.println("upload1");
-        if (file.exists()) {
-            DataOutputStream dataOutputStream = new DataOutputStream(socket.getOutputStream());
-            System.out.println("upload2");
-            FileInputStream fileInputStream = new FileInputStream(file.getAbsolutePath());
-            byte[] buffer = fileName.getBytes();
-            int read;
-            while ((read = fileInputStream.read(buffer)) > -1) {
-                dataOutputStream.write(buffer, 0, read);
-            }
-            System.out.println("upload3");
-            dataOutputStream.close();   //yeni eklendi
-            fileInputStream.close();        //yeni eklendi
-        } else {
-            System.out.println("This file does not exist!");
-        }
-        System.out.println("upload4");
+    public void upload(String fileName) {
+        try {
+            File myFile = new File(fileName); //"C:\\Users\\arda\\Desktop\\" +
+            byte[] uploadBufferClient = new byte[(int) myFile.length()];
 
+
+            FileInputStream uploadInputStream = new FileInputStream(myFile);
+            BufferedInputStream uploadBufferedInput = new BufferedInputStream(uploadInputStream);
+
+
+            DataInputStream uploadDataInput = new DataInputStream(uploadBufferedInput);
+            uploadDataInput.readFully(uploadBufferClient, 0, uploadBufferClient.length);
+
+            OutputStream outputStream = socket.getOutputStream();
+
+
+            DataOutputStream uploadDataOutput = new DataOutputStream(outputStream);
+            uploadDataOutput.writeUTF(myFile.getName());
+            uploadDataOutput.writeLong(uploadBufferClient.length);
+            uploadDataOutput.write(uploadBufferClient, 0, uploadBufferClient.length);
+            uploadDataOutput.flush();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
 
