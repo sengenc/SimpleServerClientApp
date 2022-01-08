@@ -14,18 +14,20 @@ import java.util.Scanner;
 
 
 public class Client implements Closeable, BasicMethods {
-    BufferedOutputStream outToClient = null;
     private Socket socket;
-    private BufferedReader bufferedReader;
-    private BufferedWriter bufferedWriter;
     public static final int PORT = 5024;
-    private static Scanner scanner = new Scanner(System.in);
-
     static JList jList;
     File fileToSend = null;
 
-    InputStreamReader inputStreamReader = null;
-    OutputStreamWriter outputStreamWriter = null;
+    private static BufferedReader userMessage;
+    private static BufferedReader chatFromClient;
+    private static String fileName;
+    private static PrintStream printStream;
+
+    public Client(Socket socket) {
+        this.socket = socket;
+    }
+
 
     //ACK YOLLARKEN GET/LST ayir
     public void makeGUI() {
@@ -81,44 +83,14 @@ public class Client implements Closeable, BasicMethods {
         jbSend.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                if (fileToSend.getName().isEmpty()) {
-                    JOptionPane.showMessageDialog(jFrame, "Please choose a file first", "WARNING", JOptionPane.ERROR_MESSAGE);
-                } else {
-                    try {
-                        sendMessage("PUT " + fileToSend.getName());
-                        upload(fileToSend.getAbsolutePath());
-                        System.out.println(fileToSend.getAbsolutePath());
-                    } catch (IOException ex) {
-                        ex.printStackTrace();
-                    }
-                }
-                SwingUtilities.updateComponentTreeUI(jFrame);
+
             }
         });
 
         jbList.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                try {
-                    inputStreamReader = new InputStreamReader(socket.getInputStream());
-                    outputStreamWriter = new OutputStreamWriter(socket.getOutputStream());
-                    bufferedReader = new BufferedReader(inputStreamReader);
-                    bufferedWriter = new BufferedWriter(outputStreamWriter);
-                    bufferedWriter.write(Instruction.LST.toString());
-                    bufferedWriter.newLine();
-                    bufferedWriter.flush();
 
-                    String output;
-                    int i = 0;
-                    while ((output = bufferedReader.readLine()) != null) {
-                        entries[i] = output;
-                        i++;
-                    }
-
-                    System.out.println(Arrays.toString(entries));
-                } catch (IOException ex) {
-                    ex.printStackTrace();
-                }
                 jList = new JList(entries);
                 // System.out.println(Arrays.toString(entries) + " try disi");
                 SwingUtilities.updateComponentTreeUI(jFrame);
@@ -130,22 +102,7 @@ public class Client implements Closeable, BasicMethods {
             @Override
             public void actionPerformed(ActionEvent e) {
                 SwingUtilities.updateComponentTreeUI(jFrame); //bunu yazanin allahini yerim
-                try {
-                    inputStreamReader = new InputStreamReader(socket.getInputStream());
-                    outputStreamWriter = new OutputStreamWriter(socket.getOutputStream());
-                    bufferedReader = new BufferedReader(inputStreamReader);
-                    bufferedWriter = new BufferedWriter(outputStreamWriter);
-                    System.out.println("remove buton");
-                    String temp = (String) jList.getSelectedValue();
-                    int num = jList.getSelectedIndex() + 1;
-                    System.out.println(temp);
-                    System.out.println(num);
-//                        bufferedWriter.write(Instruction.DEL + " " + num);
-//                        bufferedWriter.newLine();
-//                        bufferedWriter.flush();
-                } catch (IOException er) {
-                    er.printStackTrace();
-                }
+
 
             }
         });
@@ -153,21 +110,7 @@ public class Client implements Closeable, BasicMethods {
         jbDisconnect.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                try {
-                    inputStreamReader = new InputStreamReader(socket.getInputStream());
-                    outputStreamWriter = new OutputStreamWriter(socket.getOutputStream());
-                    bufferedReader = new BufferedReader(inputStreamReader);
-                    bufferedWriter = new BufferedWriter(outputStreamWriter);
 
-                    bufferedWriter.write(Instruction.DSC.toString());
-                    bufferedWriter.newLine();
-                    bufferedWriter.flush();
-
-                    String output = bufferedReader.readLine();
-
-                } catch (IOException err) {
-                    err.printStackTrace();
-                }
             }
         });
         jList = new JList(entries);
@@ -179,40 +122,36 @@ public class Client implements Closeable, BasicMethods {
 
     }
 
-    public Client(Socket socket) {
-        this.socket = socket;
-    }
-
     @Override
     public void sendMessage(String message) {
-        try {
-            inputStreamReader = new InputStreamReader(socket.getInputStream());
-            outputStreamWriter = new OutputStreamWriter(socket.getOutputStream());
-
-            bufferedReader = new BufferedReader(inputStreamReader);
-            bufferedWriter = new BufferedWriter(outputStreamWriter);
-            bufferedWriter.write(message);
-            bufferedWriter.newLine();
-            bufferedWriter.flush();
-        } catch (IOException err) {
-            err.printStackTrace();
-        }
+//        try {
+//            inputStreamReader = new InputStreamReader(socket.getInputStream());
+//            outputStreamWriter = new OutputStreamWriter(socket.getOutputStream());
+//
+//            bufferedReader = new BufferedReader(inputStreamReader);
+//            bufferedWriter = new BufferedWriter(outputStreamWriter);
+//            bufferedWriter.write(message);
+//            bufferedWriter.newLine();
+//            bufferedWriter.flush();
+//        } catch (IOException err) {
+//            err.printStackTrace();
+//        }
     }
 
     @Override
     public String receiveMessage() {
         String input = null;
-        try {
-            inputStreamReader = new InputStreamReader(socket.getInputStream());
-            outputStreamWriter = new OutputStreamWriter(socket.getOutputStream());
-
-            bufferedReader = new BufferedReader(inputStreamReader);
-            bufferedWriter = new BufferedWriter(outputStreamWriter);
-
-            input = bufferedReader.readLine();
-        } catch (IOException err) {
-            err.printStackTrace();
-        }
+//        try {
+//            inputStreamReader = new InputStreamReader(socket.getInputStream());
+//            outputStreamWriter = new OutputStreamWriter(socket.getOutputStream());
+//
+//            bufferedReader = new BufferedReader(inputStreamReader);
+//            bufferedWriter = new BufferedWriter(outputStreamWriter);
+//
+//            input = bufferedReader.readLine();
+//        } catch (IOException err) {
+//            err.printStackTrace();
+//        }
         return input;
     }
 
@@ -301,50 +240,58 @@ public class Client implements Closeable, BasicMethods {
 
     public void clientFunctions() throws IOException {
         while (true) {
-            listenForMessage();
-            Scanner scanner = new Scanner(System.in);
-            String input = scanner.nextLine();
-            System.out.println("clientfun");
-            String[] arr = input.split(" ", 2);
-            switch (arr[0]) {
+            try {
+                socket = new Socket("localhost", PORT);
+                userMessage = new BufferedReader(new InputStreamReader(System.in));
+            } catch (Exception e) {
+                System.err.println("Cannot connect to the server, try again later.");
+                System.exit(1);
+            }
+            printStream = new PrintStream(socket.getOutputStream());
+            chatFromClient = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+
+            switch (userMessage.readLine()) {
                 case "CON":
-                    sendMessage(Instruction.CON.toString());
-                    clientConnected();
-                    break;
+                    printStream.println("CON");
+
+                    String fromServer;
+                    while ((fromServer = chatFromClient.readLine()) != null) {
+                        System.out.println(fromServer);
+                    }
+                    continue;
                 case "LST":
-                    sendMessage(Instruction.LST.toString());
-                    if (receiveMessage().equals(Instruction.ACK.toString())) {
-                        sendMessage(Instruction.ACK.toString());
-                        if (receiveMessage().equals(Instruction.DAT.toString())) {
-                            sendMessage(Instruction.ACK.toString());
-                        }
+                    printStream.println("LST");
+                    System.out.println("list alti");
+
+                    while ((fromServer = chatFromClient.readLine()) != null) {
+                        System.out.println(fromServer);
                     }
-                    break;
+                    continue;
                 case "PUT":
-                    sendMessage(Instruction.PUT.toString());
-                    if (receiveMessage().equals(Instruction.ACK.toString())) {
-                        uploadNew("C:\\Users\\Berkay\\Desktop\\" + arr[1]);
-                        sendMessage(Instruction.DAT.toString());
+                    printStream.println("PUT");
+                    fileName = userMessage.readLine();
+                    printStream.println(fileName);
+                    upload(fileName);
+
+                    while ((fromServer = chatFromClient.readLine()) != null) {
+                        System.out.println(fromServer);
                     }
-                    System.out.println("putsw");
-                    break;
+                    continue;
                 case "GET":
-                    sendMessage(Instruction.GET.toString());
-                    if (receiveMessage().equals(Instruction.ACK.toString())) {
-                        sendMessage(Instruction.ACK.toString());
-                        download(arr[1]);
-                        sendMessage(Instruction.DAT.toString());
-                        sendMessage(Instruction.ACK.toString());
-                    } else if (receiveMessage().equals(Instruction.DND.toString())) {
-                        System.err.println("Connection error");
-                    }
-                    break;
+                    printStream.println("GET");
+                    fileName = userMessage.readLine();
+                    printStream.println(fileName);
+                    download(fileName);
+                    continue;
                 case "DEL":
-                    sendMessage(Instruction.DEL.toString());
-                    break;
+                    printStream.println("DEL");
+                    fileName = userMessage.readLine();
+                    printStream.println(fileName);
+                    continue;
                 case "DSC":
-                    sendMessage(Instruction.DSC.toString());
-                    break;
+                    printStream.println("DSC");
+                    socket.close();
+                    System.exit(0);
                 default:
                     System.out.println("DEFAULT");
                     break;
@@ -372,25 +319,25 @@ public class Client implements Closeable, BasicMethods {
     }
 
     public void listenForMessage() {
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                String msgFromGroupChat;
-
-                while (socket.isConnected()) {
-                    try {
-                        msgFromGroupChat = bufferedReader.readLine();
-                        System.out.println(msgFromGroupChat);
-                    } catch (IOException e) {
-                        try {
-                            close();
-                        } catch (IOException ex) {
-                            ex.printStackTrace();
-                        }
-                    }
-                }
-            }
-        }).start();
+//        new Thread(new Runnable() {
+//            @Override
+//            public void run() {
+//                String msgFromGroupChat;
+//
+//                while (socket.isConnected()) {
+//                    try {
+//                        msgFromGroupChat = bufferedReader.readLine();
+//                        System.out.println(msgFromGroupChat);
+//                    } catch (IOException e) {
+//                        try {
+//                            close();
+//                        } catch (IOException ex) {
+//                            ex.printStackTrace();
+//                        }
+//                    }
+//                }
+//            }
+//        }).start();
     }
 
     public static void main(String[] args) throws IOException {

@@ -21,7 +21,7 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
     private OutputStreamWriter outputStreamWriter = null;
     private BufferedReader bufferedReader = null;
     private BufferedWriter bufferedWriter = null;
-
+    private PrintStream chatPrintWriter = null;
 
 
     public ServerWorker(Socket socket) throws IOException {
@@ -155,65 +155,63 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
     @Override
     public void run() {
         try {
-            while (true) {
-                String input = receiveMessage();
-                String[] arr = input.split(" ", 2);
-                switch (arr[0]) {
+            System.out.println(socket);
+            bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            chatPrintWriter = new PrintStream(socket.getOutputStream());
+            String message;
+            while ((message = bufferedReader.readLine()) != null) {
+                switch (message) {
                     case "CON":
+                        chatPrintWriter = new PrintStream(socket.getOutputStream(), true);
                         if (socket.isConnected()) {
-                            sendMessage(Instruction.ACK.toString());
-                        } else {
-                            sendMessage(Instruction.DND.toString());
-                            try {
-                                socket.close();
-                            } catch (IOException err) {
-                                err.printStackTrace();
-                            }
+                            chatPrintWriter.println(Instruction.ACK);
                         }
-                        break;
-                    case "DSC":
-                        if (receiveMessage().equals(Instruction.DSC.toString())) {
-                            sendMessage(Instruction.DSC.toString());
-                            socket.close();
-                        }
-                        break;
+                        chatPrintWriter.close();
+                        continue;
+
                     case "LST":                                                     //SONSUZ DONGUYE GIRIYOR
-                        if (receiveMessage().equals(Instruction.LST.toString())) {
-                            sendMessage(Instruction.ACK.toString());
-                            listFiles();                                        // files.list() method??
-                            sendMessage(Instruction.DAT.toString());
+                        //chatPrintWriter = new PrintWriter(socket.getOutputStream(), true);
+                        //chatPrintWriter.println(Instruction.ACK);
+                        System.out.println("LST alti");
+                        File files = new File("C:\\Users\\Berkay\\Desktop\\dir\\");
+
+                        String[] list = files.list();
+
+                        for (int i = 0; i<list.length; i++) {
+                            chatPrintWriter.println(list[i]);
                         }
-                        break;
+
+                        chatPrintWriter.close();
+                        continue;
                     case "PUT":
-                        if (arr[0].equals(Instruction.PUT.toString())) {
-                            sendMessage(Instruction.ACK.toString());
-                            if (receiveMessage().equals(Instruction.DAT.toString())) {
-                                sendMessage(Instruction.ACK.toString());
-                            } else {
-                                sendMessage(Instruction.DND.toString());
-                            }
+                        String file;
+                        while ((file = bufferedReader.readLine()) != null) {
+                            System.out.println("while ici");
+                            download(file);
+                            break;
                         }
-                        break;
+                        System.out.println("ack ustu");
+                        //chatPrintWriter.println(Instruction.ACK);
+                        System.out.println("ack alti");
+                        //chatPrintWriter.close();
+                        System.out.println("ack close");
+                        continue;
                     case "GET":
-                        if (receiveMessage().equals(Instruction.GET.toString())) {
-                            sendMessage(Instruction.ACK.toString());
-                            if (receiveMessage().equals(Instruction.ACK.toString())) {
-                                upload("C:\\Users\\Berkay\\Desktop\\dir\\" + arr[1]);
-                            }
-                        } else {
-                            sendMessage(Instruction.DND.toString());
+                        String fileName;
+                        while ((fileName = bufferedReader.readLine()) != null) {
+                            upload(fileName);
                         }
-                        break;
+                        continue;
                     case "DEL":
-                        if (receiveMessage().equals(Instruction.GET.toString())) {
-                            deleteFile(arr[1]);
-                            sendMessage(Instruction.ACK.toString());
+                        chatPrintWriter = new PrintStream(socket.getOutputStream(), true);
+                        while ((fileName = bufferedReader.readLine()) != null) {
+                            deleteFile(fileName);
                         }
-                        break;
-                    case "DAT":
-                        downloadNew();
-
-
+                        chatPrintWriter.println(Instruction.ACK);
+                        chatPrintWriter.close();
+                        continue;
+                    case "DSC":
+                        System.exit(0);
                         break;
                 }
             }
