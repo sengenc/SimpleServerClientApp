@@ -12,7 +12,10 @@ import java.net.Socket;
 import java.util.Date;
 import java.util.Objects;
 
-
+/**
+ * Das Objekt der Klasse erzeugt einen Client, der mit dem Server kommuniziert. Dabei kann er
+ * auch Daten hoch- und herunterladen, sehen, welche Daten zur Verfuegung stehen und diese Daten loeschen.
+ */
 public class Client implements Closeable, BasicMethods {
     private static Socket socket;
     private static BufferedReader userMessage;
@@ -26,7 +29,10 @@ public class Client implements Closeable, BasicMethods {
     private static JLabel statusLabel;
     private static JList jList;
 
-
+    /**
+     * Diese Methode dient dazu, dass der Client sich mit dem Server verbinden kann.
+     * Falls der Server nicht antwortet, kommt eine Fehlermeldung und wird das Programm beendet.
+     */
     public synchronized void connect() {
         try {
             socket = new Socket("localhost", PORT);
@@ -39,6 +45,9 @@ public class Client implements Closeable, BasicMethods {
         }
     }
 
+    /**
+     * Diese Methode stellt eine Benutzerueberflaeche fuer den Client zur Verfuegung.
+     */
     public void makeClientGUI() {
         try {
             socket = new Socket("localhost", PORT);
@@ -275,6 +284,13 @@ public class Client implements Closeable, BasicMethods {
         jFrame.setVisible(true);
     }
 
+    /**
+     * Die Methode ist fuer die Situationen zustaendig, die lange dauern. Deswegen
+     * wird diese Methode fuer das Hochladen der Datei benutzt und laeuft im Hintergrund,
+     * bis die Datei erfolgreich hochgeladen ist.
+     *
+     * @param fileName ist der Pfad zu der Datei, die geschickt wird.
+     */
     public void startGUISend(String fileName) {
         SwingWorker<Void, DataOutputStream> swingWorkerSend = new SwingWorker<>() {
 
@@ -307,6 +323,13 @@ public class Client implements Closeable, BasicMethods {
         swingWorkerList.execute();
     }
 
+    /**
+     * Die Methode ist fuer die Situationen zustaendig, die lange dauern. Deswegen
+     * wird diese Methode fuer das Herunterladen der Datei benutzt und laeuft im
+     * Hintergrund, bis die Datei erfolgreich hochgeladen ist.
+     *
+     * @param fileName ist der Name der Datei, die der Client herunterladen moechte.
+     */
     public void startGUIGet(String fileName) {
         SwingWorker<Void, Void> swingWorkerGet = new SwingWorker<Void, Void>() {
             @Override
@@ -317,10 +340,22 @@ public class Client implements Closeable, BasicMethods {
         };
     }
 
+    /**
+     * Einfacher Konstruktor fuer die Klasse Client.
+     *
+     * @param socket ist der Socket, mit dem sich der Client verbinden muss.
+     */
     public Client(Socket socket) {
         this.socket = socket;
     }
 
+    /**
+     * Diese Methode nimmt als Parameter einen Dateiname (Pfad zu der Datei) und schickt diese Datei
+     * mithilfe von Stroemen zu dem Server. Wenn der Transfer erfolgreich ist, kommt eine positive Meldung,
+     * wenn nicht, dann kommt eine Fehlermeldung.
+     *
+     * @param fileName ist der Pfad zu der Datei, die geschickt wird.
+     */
     @Override
     public synchronized void upload(String fileName) {
         try {
@@ -349,6 +384,14 @@ public class Client implements Closeable, BasicMethods {
         }
     }
 
+    /**
+     * Diese Methode bekommt als Parameter den Dateinamen der Datei, die der Client vom Server
+     * herunterladen moechte. Die Datei wird vom Server durch die Stroemen geschickt und wird von
+     * dieser Methode gelesen. Wenn der Transfer erfolgreich ist, kommt eine positive Meldung,
+     * wenn nicht, dann kommt eine Fehlermeldung.
+     *
+     * @param fileName ist der Name der Datei, die der Client herunterladen moechte.
+     */
     @Override
     public synchronized void download(String fileName) {
         try {
@@ -380,7 +423,12 @@ public class Client implements Closeable, BasicMethods {
 
     }
 
-
+    /**
+     * Mit dieser Methode kann man das Programm ohne GUI benutzen.
+     * Der Client kann alle Befehle ins Terminal schreiben, die im Protokoll beschrieben wurden.
+     *
+     * @throws IOException
+     */
     public void clientFunctions() throws IOException {
         while (true) {
             try {
@@ -447,7 +495,11 @@ public class Client implements Closeable, BasicMethods {
         }
     }
 
-
+    /**
+     * Eine einfache Methode, die den Socket schliesst.
+     * Wenn nicht, dann kommt eine Fehlermeldung.
+     * @throws IOException
+     */
     @Override
     public void close() throws IOException {
         if (socket != null) {
@@ -457,7 +509,14 @@ public class Client implements Closeable, BasicMethods {
         }
     }
 
-
+    /**
+     * In der Main-Methode werden die Socket- und Client-Klassen initialisiert, und damit
+     * die Klassen Client und Server threadsicher miteinander kommunizieren koennen, wird
+     * SwingUtilities.invokeLater() aufgerufen.
+     *
+     * @param args
+     * @throws IOException
+     */
     public static void main(String[] args) throws IOException {
 
 
