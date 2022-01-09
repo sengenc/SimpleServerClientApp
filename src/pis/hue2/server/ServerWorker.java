@@ -17,58 +17,20 @@ import java.util.Objects;
 public class ServerWorker implements Runnable, Closeable, BasicMethods {
 
     private static final ArrayList<ServerWorker> clients = new ArrayList<>();
-    private final Socket socket;
-    private InputStreamReader inputStreamReader = null;
-    private OutputStreamWriter outputStreamWriter = null;
+    private Socket socket;
     private BufferedReader bufferedReader = null;
-    private BufferedWriter bufferedWriter = null;
     private PrintStream chatPrintWriter = null;
-    private static Date date = new Date();
+
+
+    static Date date = new Date();
 
 
     public ServerWorker(Socket socket) throws IOException {
         this.socket = socket;
-        clients.add(this);
-    }
-
-    public void removeClient() {
-        if (!clients.isEmpty()) {
-            clients.remove(this);
-        } else {
-            System.out.println("Nobody is in the room!");
-        }
     }
 
     @Override
-    public void sendMessage(String message) {
-        try {
-            inputStreamReader = new InputStreamReader(socket.getInputStream());
-            outputStreamWriter = new OutputStreamWriter(socket.getOutputStream());
-
-            bufferedReader = new BufferedReader(inputStreamReader);
-            bufferedWriter = new BufferedWriter(outputStreamWriter);
-            bufferedWriter.write(message);
-            bufferedWriter.newLine();
-            bufferedWriter.flush();
-        } catch (IOException err) {
-            err.printStackTrace();
-        }
-    }
-
-    @Override
-    public String receiveMessage() {
-        String input = null;
-        try {
-            input = bufferedReader.readLine();
-        } catch (IOException err) {
-            err.printStackTrace();
-        }
-        return input;
-    }
-
-
-    @Override
-    public void download(String fileName) {
+    public synchronized void download(String fileName) {
         try {
             int bytesRead;
 
@@ -76,47 +38,53 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
 
             fileName = clientData.readUTF();
 
-            OutputStream output = new FileOutputStream("C:\\Users\\arda\\Desktop\\dir\\" + fileName);
+            OutputStream output = new FileOutputStream("C:\\Users\\Berkay\\Desktop\\dir\\" + fileName);
             long fileSize = clientData.readLong();
-            byte[] downloadBufferServer = new byte[8192];
-            while (fileSize != 0 && (bytesRead = clientData.read(downloadBufferServer, 0, (int) Math.min(downloadBufferServer.length, fileSize))) != -1) {
-                output.write(downloadBufferServer, 0, bytesRead);
+            long temp = fileSize;
+            byte[] buffer = new byte[8192];
+            while (fileSize != 0 && (bytesRead = clientData.read(buffer, 0, (int) Math.min(buffer.length, fileSize))) != -1) {
+                output.write(buffer, 0, bytesRead);
                 fileSize -= bytesRead;
             }
+            System.out.println("download() while sonrasi");
+
+            chatPrintWriter.println(Instruction.ACK);
 
             output.close();
             clientData.close();
 
-
+            System.out.println("Datei " + fileName + " mit " + temp + " Bytes wurden empfangen. " + date);
         } catch (IOException err) {
+            chatPrintWriter.println(Instruction.DND);
             System.out.println("Exception: " + err);
+
         }
 
     }
 
-
     @Override
-    public void upload(String fileName) {
+    public synchronized void upload(String fileName) {
         try {
-            File myFile = new File("C:\\Users\\arda\\Desktop\\dir\\" + fileName);
-            byte[] uploadBufferServer = new byte[(int) myFile.length()];
+            File myFile = new File("C:\\Users\\Berkay\\Desktop\\dir\\" + fileName);  //handle file reading
+            byte[] mybytearray = new byte[(int) myFile.length()];
 
             FileInputStream fis = new FileInputStream(myFile);
             BufferedInputStream bis = new BufferedInputStream(fis);
 
             DataInputStream dis = new DataInputStream(bis);
-            dis.readFully(uploadBufferServer, 0, uploadBufferServer.length);
+            dis.readFully(mybytearray, 0, mybytearray.length);
 
 
-            OutputStream os = socket.getOutputStream();
+            OutputStream os = socket.getOutputStream();  //handle file send over socket
 
-            DataOutputStream dos = new DataOutputStream(os);
+            DataOutputStream dos = new DataOutputStream(os); //Sending file name and file size to the server
             dos.writeUTF(myFile.getName());
-            dos.writeLong(uploadBufferServer.length);
-            dos.write(uploadBufferServer, 0, uploadBufferServer.length);
+            dos.writeLong(mybytearray.length);
+            dos.write(mybytearray, 0, mybytearray.length);
             dos.flush();
+            System.out.println("Datei " + fileName + " wurde geschickt. " + date);
         } catch (Exception e) {
-            System.err.println("File existiert nicht!");
+            System.err.println("File does not exist!");
         }
     }
 
@@ -133,11 +101,11 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
      * @see Thread#run()
      */
     @Override
-    public void run() {
+    public synchronized void run() {
         try {
             System.out.println(socket);
             bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            chatPrintWriter = new PrintStream(socket.getOutputStream());
+            chatPrintWriter = new PrintStream(socket.getOutputStream(), true);
             String message;
             while ((message = bufferedReader.readLine()) != null) {
                 switch (message) {
@@ -154,7 +122,7 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
                         String file;
                         while ((file = bufferedReader.readLine()) != null) {
                             System.out.println("PUT ACK ici");
-
+                            //download(file);
                             break;
                         }
                         chatPrintWriter.println(Instruction.ACK);
@@ -204,11 +172,11 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
                         //chatPrintWriter.println(Instruction.ACK);
                         System.out.println("LST alti");
                         chatPrintWriter.println(Instruction.ACK);
-                        File files = new File("C:\\Users\\arda\\Desktop\\dir\\");
+                        File files = new File("C:\\Users\\Berkay\\Desktop\\dir\\");
 
                         String[] list = files.list();
 
-                        for (int i = 0; i < list.length; i++) {
+                        for (int i = 0; i<list.length; i++) {
                             chatPrintWriter.println(list[i]);
                         }
 
@@ -225,17 +193,17 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
                 }
             }
         } catch (IOException err) {
-            err.printStackTrace();
+
         }
     }
 
     public synchronized void deleteFile(String fileName) throws IOException {
-        File file = new File("C:\\Users\\arda\\Desktop\\dir\\" + fileName);
+        File file = new File("C:\\Users\\Berkay\\Desktop\\dir\\" + fileName);
         if (file.exists()) {
             Files.delete(file.toPath());
             System.out.println("Datei " + fileName + " wurde gelöscht. " + date);
         } else {
-            System.err.println("Datei existiert nicht!");
+            System.err.println("Cannot delete the file is not exist!!");
         }
     }
 
@@ -255,10 +223,9 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
      */
     @Override
     public void close() throws IOException {
-        removeClient();
-        if (inputStreamReader != null && outputStreamWriter != null && socket != null) {
-            inputStreamReader.close();
-            outputStreamWriter.close();
+        if (bufferedReader != null && chatPrintWriter != null && socket != null) {
+            bufferedReader.close();
+            chatPrintWriter.close();
             socket.close();
         } else {
             System.err.println("Problem in Clientpool!");

@@ -9,27 +9,48 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.*;
 import java.net.Socket;
-
+import java.util.Date;
+import java.util.Objects;
 
 
 public class Client implements Closeable, BasicMethods {
-    private Socket socket;
-    public static final int PORT = 5024;
-    static JList jList;
-    File fileToSend = null;
-
+    private static Socket socket;
     private static BufferedReader userMessage;
     private static BufferedReader chatFromClient;
     private static String fileName;
     private static PrintStream printStream;
+    public static final int PORT = 5071;
 
-    public Client(Socket socket) {
-        this.socket = socket;
-    }
-
+    File fileToSend = null;
+    static Date date = new Date();
+    private static JLabel statusLabel;
+    private static JList jList;
 
     //ACK YOLLARKEN GET/LST ayir
-    public void makeGUI() {
+    public synchronized void connect() {
+        try {
+            socket = new Socket("localhost", PORT);
+            userMessage = new BufferedReader(new InputStreamReader(System.in));
+            printStream = new PrintStream(socket.getOutputStream(), true);
+            chatFromClient = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        } catch (Exception e) {
+            System.err.println("Cannot connect to the server, try again later.");
+            System.exit(1);
+        }
+    }
+
+    public void makeClientGUI() {
+        try {
+            socket = new Socket("localhost", PORT);
+            userMessage = new BufferedReader(new InputStreamReader(System.in));
+            printStream = new PrintStream(socket.getOutputStream());
+            chatFromClient = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        } catch (Exception e) {
+            System.err.println("Cannot connect to the server, try again later.");
+            System.exit(1);
+        }
+
+
         JFrame jFrame = new JFrame("Client");
 
         jFrame.setSize(500, 500);
@@ -45,7 +66,10 @@ public class Client implements Closeable, BasicMethods {
         JButton jbDisconnect = new JButton("Disconnect");
         JButton jbRemove = new JButton("Remove");
         JButton jbGet = new JButton("Get");
+        JButton jbQuit = new JButton("Quit");
 
+//        statusLabel = new JLabel("Not Completed", JLabel.CENTER);
+//        jFrame.add(statusLabel);
 
         jFrame.add(jbConnect);
         jFrame.add(jbChooseFile);
@@ -54,16 +78,25 @@ public class Client implements Closeable, BasicMethods {
         jFrame.add(jbDisconnect);
         jFrame.add(jbRemove);
         jFrame.add(jbGet);
+        jFrame.add(jbQuit);
+
+
 
         jbConnect.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                printStream.println("CON");
                 try {
-                    clientConnected();
-                    sendMessage(Instruction.CON.toString());
-                } catch (IOException ex) {
-                    ex.printStackTrace();
+                    String fromServer;
+                    while ((fromServer = chatFromClient.readLine()) != null) {
+                        JOptionPane.showMessageDialog(jFrame, "Server : " + fromServer);
+                        System.out.println(fromServer);
+                    }
+                } catch (IOException er) {
+                    er.printStackTrace();
                 }
+
+                connect();
             }
         });
 
@@ -82,6 +115,40 @@ public class Client implements Closeable, BasicMethods {
         jbSend.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                if (fileToSend.getName().isEmpty()) {
+                    JOptionPane.showMessageDialog(jFrame, "Please choose a file first", "WARNING", JOptionPane.ERROR_MESSAGE);
+                } else {
+                    try {
+                        printStream.println(Instruction.PUT);
+                        printStream.println(fileToSend.getName());
+                        //startGUISend(fileToSend.getAbsolutePath());
+                        //<- dosya ismi yaz
+                        if (Objects.equals(chatFromClient.readLine(), Instruction.ACK.toString())) {
+                            System.out.println("PUT ACK VE DAT");
+                            printStream.println(Instruction.DAT);
+                            upload(fileToSend.getAbsolutePath());
+                        }
+                        chatFromClient = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                        System.out.println("DOSYA ATTIKTAN SONRA");
+
+                        String fromServer = chatFromClient.readLine();
+
+                        if (fromServer.equals(Instruction.ACK.toString())) {
+                            System.out.println("SERVER: ACK");
+                            long temp = fileToSend.length();
+                            JOptionPane.showMessageDialog(jFrame, "Server : " + temp + " Bytes wurden geschickt.\n" + date);
+                        } else if (fromServer.equals(Instruction.DND.toString())) {
+                            System.out.println("SERVER: DND");
+
+                        } else {
+                            System.out.println("No feedback from server");
+                        }
+
+                        connect();
+                    } catch (IOException err) {
+                        err.printStackTrace();
+                    }
+                }
 
             }
         });
@@ -89,20 +156,47 @@ public class Client implements Closeable, BasicMethods {
         jbList.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                printStream.println(Instruction.LST);
 
+
+                String fromServer;
+                try {
+                    System.out.println("SERVER:" + chatFromClient.readLine());
+                    int i = 0;
+                    while ((fromServer = chatFromClient.readLine()) != null) {
+                        entries[i] = fromServer;
+                        i++;
+                    }
+                } catch (IOException err) {
+                    err.printStackTrace();
+                }
                 jList = new JList(entries);
-                // System.out.println(Arrays.toString(entries) + " try disi");
                 SwingUtilities.updateComponentTreeUI(jFrame);
-
+                connect();
             }
         });
 
         jbRemove.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                SwingUtilities.updateComponentTreeUI(jFrame); //bunu yazanin allahini yerim
+                JFileChooser fileChooser = new JFileChooser("C:\\Users\\Berkay\\Desktop\\dir\\");
+                fileChooser.setDialogTitle("Choose a file to delete");
+                fileChooser.setApproveButtonText("Delete");
 
+                if (fileChooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
+                    fileToSend = fileChooser.getSelectedFile();
+                }
+                printStream.println("DEL");
+                printStream.println(fileToSend.getName());
 
+                try {
+                    System.out.println(chatFromClient.readLine());
+                    JOptionPane.showMessageDialog(jFrame, "Server : " + fileToSend.getName() + " wurde gelöscht.\n" + date);
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+
+                connect();
             }
         });
 
@@ -110,110 +204,128 @@ public class Client implements Closeable, BasicMethods {
             @Override
             public void actionPerformed(ActionEvent e) {
 
+                printStream.println("DSC");
+
+                try {
+                    if (chatFromClient.readLine().equals(Instruction.DSC.toString())) {
+                        socket.close();
+                        System.exit(0);
+                    }
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+
             }
         });
+
+        jbGet.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                JFileChooser fileChooser = new JFileChooser("C:\\Users\\Berkay\\Desktop\\dir\\");
+                fileChooser.setDialogTitle("Choose a file to download");
+                fileChooser.setApproveButtonText("Download");
+
+                if (fileChooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
+                    fileToSend = fileChooser.getSelectedFile();
+                }
+
+                printStream.println("GET");
+                printStream.println(fileToSend.getName());
+
+                try {
+                    if (Objects.equals(chatFromClient.readLine(), Instruction.ACK.toString())) {
+                        System.out.println("get ack ici");
+                        printStream.println(Instruction.ACK);
+                        //upload(fileToSend.getAbsolutePath());
+                    }
+
+                    while (Objects.equals(chatFromClient.readLine(), Instruction.DAT.toString())) {
+                        System.out.println("DAT ici");
+                        download(fileName);
+                        break;
+                    }
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+
+                JOptionPane.showMessageDialog(jFrame, "Server : " + fileToSend.getName() + " wurde heruntergeladen.\n" + date);
+                connect();
+                //startGUIGet();
+            }
+        });
+
+        jbQuit.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                printStream.println("QUIT");
+                try {
+                    socket.close();
+                    System.exit(0);
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+            }
+        });
+
         jList = new JList(entries);
         jList.setPreferredSize(new Dimension(300, 300));
         jList.setSelectedIndex(0);
         jFrame.add(jList);
-        //SwingUtilities.updateComponentTreeUI(jFrame); //swing.invokeLater eventDispatchThread (auch klausurrelevant)
+        SwingUtilities.updateComponentTreeUI(jFrame); //swing.invokeLater eventDispatchThread (auch klausurrelevant)
         jFrame.setVisible(true);
-
     }
 
-    @Override
-    public void sendMessage(String message) {
-//        try {
-//            inputStreamReader = new InputStreamReader(socket.getInputStream());
-//            outputStreamWriter = new OutputStreamWriter(socket.getOutputStream());
-//
-//            bufferedReader = new BufferedReader(inputStreamReader);
-//            bufferedWriter = new BufferedWriter(outputStreamWriter);
-//            bufferedWriter.write(message);
-//            bufferedWriter.newLine();
-//            bufferedWriter.flush();
-//        } catch (IOException err) {
-//            err.printStackTrace();
-//        }
-    }
+    public void startGUISend(String fileName) {
+        SwingWorker<Void, DataOutputStream> swingWorkerSend = new SwingWorker<>() {
 
-    @Override
-    public String receiveMessage() {
-        String input = null;
-//        try {
-//            inputStreamReader = new InputStreamReader(socket.getInputStream());
-//            outputStreamWriter = new OutputStreamWriter(socket.getOutputStream());
-//
-//            bufferedReader = new BufferedReader(inputStreamReader);
-//            bufferedWriter = new BufferedWriter(outputStreamWriter);
-//
-//            input = bufferedReader.readLine();
-//        } catch (IOException err) {
-//            err.printStackTrace();
-//        }
-        return input;
-    }
-
-    @Override
-    public void download(String fileName) {
-        try {
-            int bytesRead;
-            InputStream inputStream = socket.getInputStream();
-
-            DataInputStream clientData = new DataInputStream(inputStream);
-
-            fileName = clientData.readUTF();
-            OutputStream outputStream = new FileOutputStream("C:\\Users\\arda\\Desktop\\client\\" + fileName);
-            long fileSize = clientData.readLong();
-            byte[] downloadBufferClient = new byte[8192];
-
-            while (fileSize != 0 && (bytesRead = clientData.read(downloadBufferClient, 0, (int) Math.min(downloadBufferClient.length, fileSize))) != -1) {
-                outputStream.write(downloadBufferClient, 0, bytesRead);
-                fileSize -= bytesRead;
+            @Override
+            protected Void doInBackground() throws Exception {
+                upload(fileName);
+                return null;
             }
 
-            outputStream.close();
-            inputStream.close();
+            @Override
+            protected void done() {
+                System.out.println("SwingWorker upload done");
 
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        }
+                statusLabel.setText("Upload done");
 
+
+            }
+        };
+        swingWorkerSend.execute();
     }
 
+    public void startGUIList() {
+        SwingWorker<Void, Void> swingWorkerList = new SwingWorker<>() {
+            @Override
+            protected Void doInBackground() throws Exception {
 
+                return null;
+            }
+        };
+        swingWorkerList.execute();
+    }
 
-    public void uploadNew(String fileName) throws IOException {
-        BufferedOutputStream bos = new BufferedOutputStream(socket.getOutputStream());
-        DataOutputStream dos = new DataOutputStream(bos);
+    public void startGUIGet(String fileName) {
+        SwingWorker<Void, Void> swingWorkerGet = new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                download(fileName);
+                return null;
+            }
+        };
+    }
 
-        File file = new File(fileName);
-
-        long length = file.length();
-        dos.writeLong(length);
-
-        String name = file.getName();
-        dos.writeUTF(name);
-
-        FileInputStream fis = new FileInputStream(file);
-        BufferedInputStream bis = new BufferedInputStream(fis);
-
-        int theByte = 0;
-        while ((theByte = bis.read()) != -1)
-            bos.write(theByte);
-
-        dos.flush();
-
-        //dos.close();
-        // bis.close();
-
+    public Client(Socket socket) {
+        this.socket = socket;
     }
 
     @Override
-    public void upload(String fileName) {
+    public synchronized void upload(String fileName) {
         try {
-            File myFile = new File(fileName); //"C:\\Users\\arda\\Desktop\\" +
-            byte[] uploadBufferClient = new byte[(int) myFile.length()];
+            File myFile = new File(fileName); //"C:\\Users\\Berkay\\Desktop\\" +
+            byte[] mybytearray = new byte[(int) myFile.length()];
 
 
             FileInputStream uploadInputStream = new FileInputStream(myFile);
@@ -221,19 +333,51 @@ public class Client implements Closeable, BasicMethods {
 
 
             DataInputStream uploadDataInput = new DataInputStream(uploadBufferedInput);
-            uploadDataInput.readFully(uploadBufferClient, 0, uploadBufferClient.length);
+            uploadDataInput.readFully(mybytearray, 0, mybytearray.length);
 
             OutputStream outputStream = socket.getOutputStream();
 
 
             DataOutputStream uploadDataOutput = new DataOutputStream(outputStream);
             uploadDataOutput.writeUTF(myFile.getName());
-            uploadDataOutput.writeLong(uploadBufferClient.length);
-            uploadDataOutput.write(uploadBufferClient, 0, uploadBufferClient.length);
+            uploadDataOutput.writeLong(mybytearray.length);
+            uploadDataOutput.write(mybytearray, 0, mybytearray.length);
             uploadDataOutput.flush();
+            System.out.println("File " + fileName + " wurde geschickt.");
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    @Override
+    public synchronized void download(String fileName) {
+        try {
+            int bytesRead;
+            InputStream inputStream = socket.getInputStream();
+
+            DataInputStream clientData = new DataInputStream(inputStream);
+
+            fileName = clientData.readUTF();
+            OutputStream outputStream = new FileOutputStream("C:\\Users\\Berkay\\Desktop\\client\\" + fileName);
+            long fileSize = clientData.readLong();
+            byte[] buffer = new byte[8192];
+
+            while (fileSize != 0 && (bytesRead = clientData.read(buffer, 0, (int) Math.min(buffer.length, fileSize))) != -1) {
+                outputStream.write(buffer, 0, bytesRead);
+                fileSize -= bytesRead;
+            }
+
+            printStream.println("GET: " + Instruction.ACK);
+
+            outputStream.close();
+            inputStream.close();
+
+            System.out.println("File " + fileName + " wurde vom Server heruntergeladen.");
+        } catch (IOException ex) {
+            printStream.println("GET: " + Instruction.DND);
+            ex.printStackTrace();
+        }
+
     }
 
 
@@ -249,61 +393,57 @@ public class Client implements Closeable, BasicMethods {
             printStream = new PrintStream(socket.getOutputStream());
             chatFromClient = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
-            switch (userMessage.readLine()) {
-                case "CON":
-                    printStream.println("CON");
+            try {
+                switch (userMessage.readLine()) {
+                    case "CON":
+                        printStream.println("CON");
 
-                    String fromServer;
-                    while ((fromServer = chatFromClient.readLine()) != null) {
-                        System.out.println(fromServer);
-                    }
-                    continue;
-                case "LST":
-                    printStream.println("LST");
-                    System.out.println("list alti");
+                        String fromServer;
+                        while ((fromServer = chatFromClient.readLine()) != null) {
+                            System.out.println(fromServer);
+                        }
+                        continue;
+                    case "PUT":
+                        printStream.println("PUT");
+                        System.out.print("Enter file name: ");
+                        fileName = userMessage.readLine();
+                        printStream.println(fileName);
+                        upload(fileName);
 
-                    while ((fromServer = chatFromClient.readLine()) != null) {
-                        System.out.println(fromServer);
-                    }
-                    continue;
-                case "PUT":
-                    printStream.println("PUT");
-                    fileName = userMessage.readLine();
-                    printStream.println(fileName);
-                    upload(fileName);
+                        while ((fromServer = chatFromClient.readLine()) != null) {
+                            System.out.println(fromServer);
+                        }
+                        continue;
+                    case "GET":
+                        printStream.println("GET");
+                        System.out.print("Enter file name: ");
+                        fileName = userMessage.readLine();
+                        printStream.println(fileName);
+                        download(fileName);
+                        continue;
+                    case "DEL":
+                        printStream.println("DEL");
+                        System.out.print("Enter file name: ");
+                        fileName = userMessage.readLine();
+                        printStream.println(fileName);
+                        continue;
+                    case "LST":
+                        printStream.println("LST");
+                        System.out.println("list alti");
 
-                    while ((fromServer = chatFromClient.readLine()) != null) {
-                        System.out.println(fromServer);
-                    }
-                    continue;
-                case "GET":
-                    printStream.println("GET");
-                    fileName = userMessage.readLine();
-                    printStream.println(fileName);
-                    download(fileName);
-                    continue;
-                case "DEL":
-                    printStream.println("DEL");
-                    fileName = userMessage.readLine();
-                    printStream.println(fileName);
-                    continue;
-                case "DSC":
-                    printStream.println("DSC");
-                    socket.close();
-                    System.exit(0);
-                default:
-                    System.out.println("DEFAULT");
-                    break;
+                        while ((fromServer = chatFromClient.readLine()) != null) {
+                            System.out.println(fromServer);
+                        }
+                        continue;
+                    case "DSC":
+                        printStream.println("DSC");
+                        socket.close();
+                        System.exit(0);
+                }
+            } catch (Exception e) {
+                System.err.println("not valid input");
             }
-        }
-    }
 
-    public void clientConnected() throws IOException {
-        try {
-            socket = new Socket("localhost", PORT);
-            System.out.println("Joined");
-        } catch (IOException e) {
-            close();
         }
     }
 
@@ -313,46 +453,25 @@ public class Client implements Closeable, BasicMethods {
         if (socket != null) {
             socket.close();
         } else {
-            System.err.println("Could not close one of the streams!");
+            System.err.println("Could not close the stream!");
         }
     }
 
-    public void listenForMessage() {
-//        new Thread(new Runnable() {
-//            @Override
-//            public void run() {
-//                String msgFromGroupChat;
-//
-//                while (socket.isConnected()) {
-//                    try {
-//                        msgFromGroupChat = bufferedReader.readLine();
-//                        System.out.println(msgFromGroupChat);
-//                    } catch (IOException e) {
-//                        try {
-//                            close();
-//                        } catch (IOException ex) {
-//                            ex.printStackTrace();
-//                        }
-//                    }
-//                }
-//            }
-//        }).start();
-    }
 
     public static void main(String[] args) throws IOException {
-        Socket socket = new Socket("localhost", PORT);
-        Client client = new Client(socket);
+
 
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
+                Socket socket = null;
                 try {
-                    client.clientFunctions();
+                    socket = new Socket("localhost", PORT);
+                    Client client = new Client(socket);
+                    client.makeClientGUI();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-
-                //client.makeGUI();
             }
         });
     }

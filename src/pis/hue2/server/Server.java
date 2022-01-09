@@ -16,7 +16,7 @@ public class Server implements Closeable {
 
     private static ServerSocket serverSocket = null;
     private static Socket clientSocket = null;
-    private static final int PORT = 5024;
+    private static final int PORT = 5071;
     private static boolean isRunning = true;
 
 
