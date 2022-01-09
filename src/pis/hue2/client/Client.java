@@ -26,7 +26,7 @@ public class Client implements Closeable, BasicMethods {
     private static JLabel statusLabel;
     private static JList jList;
 
-    //ACK YOLLARKEN GET/LST ayir
+
     public synchronized void connect() {
         try {
             socket = new Socket("localhost", PORT);
@@ -122,14 +122,14 @@ public class Client implements Closeable, BasicMethods {
                         printStream.println(Instruction.PUT);
                         printStream.println(fileToSend.getName());
                         //startGUISend(fileToSend.getAbsolutePath());
-                        //<- dosya ismi yaz
+
                         if (Objects.equals(chatFromClient.readLine(), Instruction.ACK.toString())) {
                             System.out.println("PUT ACK VE DAT");
                             printStream.println(Instruction.DAT);
                             upload(fileToSend.getAbsolutePath());
                         }
                         chatFromClient = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                        System.out.println("DOSYA ATTIKTAN SONRA");
+
 
                         String fromServer = chatFromClient.readLine();
 
@@ -141,7 +141,7 @@ public class Client implements Closeable, BasicMethods {
                             System.out.println("SERVER: DND");
 
                         } else {
-                            System.out.println("No feedback from server");
+                            System.out.println("Kein feedback erhalten");
                         }
 
                         connect();
@@ -179,7 +179,7 @@ public class Client implements Closeable, BasicMethods {
         jbRemove.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                JFileChooser fileChooser = new JFileChooser("C:\\Users\\Berkay\\Desktop\\dir\\");
+                JFileChooser fileChooser = new JFileChooser("C:\\Users\\arda\\Desktop\\dir\\");
                 fileChooser.setDialogTitle("Choose a file to delete");
                 fileChooser.setApproveButtonText("Delete");
 
@@ -221,7 +221,7 @@ public class Client implements Closeable, BasicMethods {
         jbGet.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                JFileChooser fileChooser = new JFileChooser("C:\\Users\\Berkay\\Desktop\\dir\\");
+                JFileChooser fileChooser = new JFileChooser("C:\\Users\\arda\\Desktop\\dir\\");
                 fileChooser.setDialogTitle("Choose a file to download");
                 fileChooser.setApproveButtonText("Download");
 
@@ -236,7 +236,7 @@ public class Client implements Closeable, BasicMethods {
                     if (Objects.equals(chatFromClient.readLine(), Instruction.ACK.toString())) {
                         System.out.println("get ack ici");
                         printStream.println(Instruction.ACK);
-                        //upload(fileToSend.getAbsolutePath());
+
                     }
 
                     while (Objects.equals(chatFromClient.readLine(), Instruction.DAT.toString())) {
@@ -271,7 +271,7 @@ public class Client implements Closeable, BasicMethods {
         jList.setPreferredSize(new Dimension(300, 300));
         jList.setSelectedIndex(0);
         jFrame.add(jList);
-        SwingUtilities.updateComponentTreeUI(jFrame); //swing.invokeLater eventDispatchThread (auch klausurrelevant)
+        SwingUtilities.updateComponentTreeUI(jFrame);
         jFrame.setVisible(true);
     }
 
@@ -324,7 +324,7 @@ public class Client implements Closeable, BasicMethods {
     @Override
     public synchronized void upload(String fileName) {
         try {
-            File myFile = new File(fileName); //"C:\\Users\\Berkay\\Desktop\\" +
+            File myFile = new File(fileName); //"C:\\Users\\arda\\Desktop\\" +
             byte[] mybytearray = new byte[(int) myFile.length()];
 
 
@@ -358,7 +358,7 @@ public class Client implements Closeable, BasicMethods {
             DataInputStream clientData = new DataInputStream(inputStream);
 
             fileName = clientData.readUTF();
-            OutputStream outputStream = new FileOutputStream("C:\\Users\\Berkay\\Desktop\\client\\" + fileName);
+            OutputStream outputStream = new FileOutputStream("C:\\Users\\arda\\Desktop\\client\\" + fileName);
             long fileSize = clientData.readLong();
             byte[] buffer = new byte[8192];
 

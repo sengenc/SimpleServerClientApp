@@ -12,7 +12,8 @@ import java.util.Objects;
 
 
 /**
- * @author ardasengenc
+ * Diese Klasse uebernimmt die Verantwortung und Funktionalitaet der Server-Klasse,
+ * sodass der Server-Klasse Flexibilitaet und Parallelitaet geboten wird. Diese Klasse implementiert 3 Schnittstellen.
  */
 public class ServerWorker implements Runnable, Closeable, BasicMethods {
 
@@ -29,6 +30,13 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
         this.socket = socket;
     }
 
+    /**
+     * Diese Methode akzeptiert die Anfrage vom Client und speichert die gewuenschte Datei in der Serverdatei.
+     * Wenn ein Client also eine Datei hochladen moechte, liest diese Methode zuerst die Daten und schreibt
+     * dann die Datei in ein bestimmtes Verzeichnis. Es ist eine entsprechende Methode für den Client-Upload
+     *
+     * @param fileName String, ist ein String Objekt das den Namen der Datei darstellt
+     */
     @Override
     public synchronized void download(String fileName) {
         try {
@@ -38,7 +46,7 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
 
             fileName = clientData.readUTF();
 
-            OutputStream output = new FileOutputStream("C:\\Users\\Berkay\\Desktop\\dir\\" + fileName);
+            OutputStream output = new FileOutputStream("C:\\Users\\arda\\Desktop\\dir\\" + fileName);
             long fileSize = clientData.readLong();
             long temp = fileSize;
             byte[] buffer = new byte[8192];
@@ -46,7 +54,7 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
                 output.write(buffer, 0, bytesRead);
                 fileSize -= bytesRead;
             }
-            System.out.println("download() while sonrasi");
+
 
             chatPrintWriter.println(Instruction.ACK);
 
@@ -62,10 +70,17 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
 
     }
 
+    /**
+     * Diese Methode akzeptiert die Anfrage vom Client und speichert die gewuenschte Datei in der Serverdatei.
+     * Wenn ein Client also eine Datei herunterladen moechte, liest diese Methode zuerst die Daten und schreibt
+     * dann die Datei in ein bestimmtes Verzeichnis. Es ist eine entsprechende Methode für den Client-Download
+     *
+     * @param fileName ist ein String Objekt, das den Namen der Datei darstellt
+     */
     @Override
     public synchronized void upload(String fileName) {
         try {
-            File myFile = new File("C:\\Users\\Berkay\\Desktop\\dir\\" + fileName);  //handle file reading
+            File myFile = new File("C:\\Users\\arda\\Desktop\\dir\\" + fileName);
             byte[] mybytearray = new byte[(int) myFile.length()];
 
             FileInputStream fis = new FileInputStream(myFile);
@@ -75,30 +90,43 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
             dis.readFully(mybytearray, 0, mybytearray.length);
 
 
-            OutputStream os = socket.getOutputStream();  //handle file send over socket
+            OutputStream os = socket.getOutputStream();
 
-            DataOutputStream dos = new DataOutputStream(os); //Sending file name and file size to the server
+            DataOutputStream dos = new DataOutputStream(os);
             dos.writeUTF(myFile.getName());
             dos.writeLong(mybytearray.length);
             dos.write(mybytearray, 0, mybytearray.length);
             dos.flush();
             System.out.println("Datei " + fileName + " wurde geschickt. " + date);
         } catch (Exception e) {
-            System.err.println("File does not exist!");
+            System.err.println("Datei existiert nicht!");
         }
     }
 
 
     /**
-     * When an object implementing interface {@code Runnable} is used
-     * to create a thread, starting the thread causes the object's
-     * {@code run} method to be called in that separately executing
-     * thread.
-     * <p>
-     * The general contract of the method {@code run} is that it may
-     * take any action whatsoever.
+     * Diese Methode gibt dem Client eine Funktionalitaet, um Dateien vom Server loeschen zu koennen, solange
+     * die Datei existiert.
      *
-     * @see Thread#run()
+     * @param fileName ist ein String Objekt das den Namen der Datei darstellt
+     * @throws IOException
+     */
+    public synchronized void deleteFile(String fileName) throws IOException {
+        File file = new File("C:\\Users\\arda\\Desktop\\dir\\" + fileName);
+        if (file.exists()) {
+            Files.delete(file.toPath());
+            System.out.println("Datei " + fileName + " wurde gelöscht. " + date);
+        } else {
+            System.err.println("Cannot delete the file is not exist!!");
+        }
+    }
+
+
+    /**
+     * Diese Methode verknuepft alle relevanten Server-Client-Methoden und regelt diese in Bezug auf TCP/UDP-Protokolle.
+     * Für jede Funktionalitaet gibt es eine entsprechende Kommunikation zwischen Benutzer und Client. Die Funktion
+     * befindet sich in der Run-Methode, die einen Thread bereitstellt, sodass die mehreren Clients unterschiedliche
+     * Funktionen ausfuehren koennen und nicht aufeinander warten
      */
     @Override
     public synchronized void run() {
@@ -128,23 +156,16 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
                         chatPrintWriter.println(Instruction.ACK);
 
                         while (Objects.equals(bufferedReader.readLine(), Instruction.DAT.toString())) {
-                            System.out.println("DAT ici");
+
                             download(file);
                             break;
                         }
-
-                        System.out.println("ack ustu");
-
-                        System.out.println("ack alti");
-
-                        System.out.println("ack close");
-
                         continue;
                     case "GET":
                         String fileName;
 
                         while ((fileName = bufferedReader.readLine()) != null) {
-                            System.out.println("GET ici");
+
                             break;
                         }
 
@@ -168,15 +189,13 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
                         chatPrintWriter.close();
                         continue;
                     case "LST":
-                        //chatPrintWriter = new PrintWriter(socket.getOutputStream(), true);
-                        //chatPrintWriter.println(Instruction.ACK);
-                        System.out.println("LST alti");
+
                         chatPrintWriter.println(Instruction.ACK);
-                        File files = new File("C:\\Users\\Berkay\\Desktop\\dir\\");
+                        File files = new File("C:\\Users\\arda\\Desktop\\dir\\");
 
                         String[] list = files.list();
 
-                        for (int i = 0; i<list.length; i++) {
+                        for (int i = 0; i < list.length; i++) {
                             chatPrintWriter.println(list[i]);
                         }
 
@@ -197,29 +216,12 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
         }
     }
 
-    public synchronized void deleteFile(String fileName) throws IOException {
-        File file = new File("C:\\Users\\Berkay\\Desktop\\dir\\" + fileName);
-        if (file.exists()) {
-            Files.delete(file.toPath());
-            System.out.println("Datei " + fileName + " wurde gelöscht. " + date);
-        } else {
-            System.err.println("Cannot delete the file is not exist!!");
-        }
-    }
-
 
     /**
-     * Closes this stream and releases any system resources associated
-     * with it. If the stream is already closed then invoking this
-     * method has no effect.
+     * Schliesst diesen Stream und gibt alle damit verbundenen Systemressourcen frei. Wenn der Stream bereits
+     * geschlossen ist, hat das Aufrufen dieser Methode keine Auswirkung.
      *
-     * <p> As noted in {@link AutoCloseable#close()}, cases where the
-     * close may fail require careful attention. It is strongly advised
-     * to relinquish the underlying resources and to internally
-     * <em>mark</em> the {@code Closeable} as closed, prior to throwing
-     * the {@code IOException}.
-     *
-     * @throws IOException if an I/O error occurs
+     * @throws IOException, wenn ein I/O Fehler aufgetreten ist
      */
     @Override
     public void close() throws IOException {
@@ -228,7 +230,7 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
             chatPrintWriter.close();
             socket.close();
         } else {
-            System.err.println("Problem in Clientpool!");
+            System.err.println("Ein Problem ist aufgetreten!");
         }
     }
 
