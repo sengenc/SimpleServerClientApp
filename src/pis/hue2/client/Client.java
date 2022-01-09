@@ -9,8 +9,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.*;
 import java.net.Socket;
-import java.util.Arrays;
-import java.util.Scanner;
+
 
 
 public class Client implements Closeable, BasicMethods {

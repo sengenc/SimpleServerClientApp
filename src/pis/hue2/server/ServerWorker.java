@@ -7,6 +7,8 @@ import java.io.*;
 import java.net.Socket;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.Objects;
 
 
 /**
@@ -15,13 +17,13 @@ import java.util.ArrayList;
 public class ServerWorker implements Runnable, Closeable, BasicMethods {
 
     private static final ArrayList<ServerWorker> clients = new ArrayList<>();
-    private static ArrayList<MyFile> myFiles = new ArrayList<>();
     private final Socket socket;
     private InputStreamReader inputStreamReader = null;
     private OutputStreamWriter outputStreamWriter = null;
     private BufferedReader bufferedReader = null;
     private BufferedWriter bufferedWriter = null;
     private PrintStream chatPrintWriter = null;
+    private static Date date = new Date();
 
 
     public ServerWorker(Socket socket) throws IOException {
@@ -93,28 +95,6 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
     }
 
 
-    public void downloadNew() throws IOException {
-        BufferedInputStream bis = new BufferedInputStream(socket.getInputStream());
-        DataInputStream dis = new DataInputStream(bis);
-
-        long fileLength = dis.readLong();
-        String fileName = dis.readUTF();
-
-        File file = new File("C:\\Users\\Berkay\\Desktop\\dir\\" + fileName);
-
-        FileOutputStream fos = new FileOutputStream(file);
-        BufferedOutputStream bos = new BufferedOutputStream(fos);
-
-        int theByte = 0;
-        while ((theByte = bis.read()) != -1)
-            bos.write(theByte);
-
-        bos.flush();
-
-//        bos.close();
-//        dis.close();
-    }
-
     @Override
     public void upload(String fileName) {
         try {
@@ -165,52 +145,81 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
                         chatPrintWriter = new PrintStream(socket.getOutputStream(), true);
                         if (socket.isConnected()) {
                             chatPrintWriter.println(Instruction.ACK);
+                        } else {
+                            chatPrintWriter.println(Instruction.DND);
                         }
-                        chatPrintWriter.close();
-                        continue;
-
-                    case "LST":                                                     //SONSUZ DONGUYE GIRIYOR
-                        //chatPrintWriter = new PrintWriter(socket.getOutputStream(), true);
-                        //chatPrintWriter.println(Instruction.ACK);
-                        System.out.println("LST alti");
-                        File files = new File("C:\\Users\\Berkay\\Desktop\\dir\\");
-
-                        String[] list = files.list();
-
-                        for (int i = 0; i<list.length; i++) {
-                            chatPrintWriter.println(list[i]);
-                        }
-
                         chatPrintWriter.close();
                         continue;
                     case "PUT":
                         String file;
                         while ((file = bufferedReader.readLine()) != null) {
-                            System.out.println("while ici");
+                            System.out.println("PUT ACK ici");
+
+                            break;
+                        }
+                        chatPrintWriter.println(Instruction.ACK);
+
+                        while (Objects.equals(bufferedReader.readLine(), Instruction.DAT.toString())) {
+                            System.out.println("DAT ici");
                             download(file);
                             break;
                         }
+
                         System.out.println("ack ustu");
-                        //chatPrintWriter.println(Instruction.ACK);
+
                         System.out.println("ack alti");
-                        //chatPrintWriter.close();
+
                         System.out.println("ack close");
+
                         continue;
                     case "GET":
                         String fileName;
+
                         while ((fileName = bufferedReader.readLine()) != null) {
+                            System.out.println("GET ici");
+                            break;
+                        }
+
+                        chatPrintWriter.println(Instruction.ACK);
+
+                        if (bufferedReader.readLine().equals(Instruction.ACK.toString())) {
+                            chatPrintWriter.println(Instruction.DAT);
                             upload(fileName);
                         }
+
+                        System.out.println(bufferedReader.readLine());
+
                         continue;
                     case "DEL":
                         chatPrintWriter = new PrintStream(socket.getOutputStream(), true);
                         while ((fileName = bufferedReader.readLine()) != null) {
                             deleteFile(fileName);
+                            break;
                         }
+                        chatPrintWriter.println("DEL: " + Instruction.ACK);
+                        chatPrintWriter.close();
+                        continue;
+                    case "LST":
+                        //chatPrintWriter = new PrintWriter(socket.getOutputStream(), true);
+                        //chatPrintWriter.println(Instruction.ACK);
+                        System.out.println("LST alti");
                         chatPrintWriter.println(Instruction.ACK);
+                        File files = new File("C:\\Users\\arda\\Desktop\\dir\\");
+
+                        String[] list = files.list();
+
+                        for (int i = 0; i < list.length; i++) {
+                            chatPrintWriter.println(list[i]);
+                        }
+
                         chatPrintWriter.close();
                         continue;
                     case "DSC":
+                        chatPrintWriter.println(Instruction.DSC);
+
+                        break;
+                    case "QUIT":
+                        close();
                         System.exit(0);
                         break;
                 }
@@ -220,39 +229,16 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
         }
     }
 
-    public void deleteFile(String fileName) throws IOException {
-        File file = new File("C:\\Users\\Berkay\\Desktop\\dir\\" + fileName);
+    public synchronized void deleteFile(String fileName) throws IOException {
+        File file = new File("C:\\Users\\arda\\Desktop\\dir\\" + fileName);
         if (file.exists()) {
             Files.delete(file.toPath());
-            for (int i = 0; i < myFiles.size(); i++) {
-                if (myFiles.get(i).getName().equals(fileName)) {
-                    myFiles.remove(i);
-                }
-            }
-            System.out.println(fileName + " has been deleted!");
-            sendMessage(Instruction.ACK.toString());
+            System.out.println("Datei " + fileName + " wurde gelöscht. " + date);
         } else {
-            System.err.println("Cannot delete the file is not exist!!");
-            sendMessage(Instruction.DND.toString());
+            System.err.println("Datei existiert nicht!");
         }
     }
 
-    public void listFiles() throws IOException {
-        try {
-            outputStreamWriter = new OutputStreamWriter(socket.getOutputStream());
-            inputStreamReader = new InputStreamReader(socket.getInputStream());
-            bufferedReader = new BufferedReader(inputStreamReader);
-            bufferedWriter = new BufferedWriter(outputStreamWriter);
-        } catch (IOException e) {
-            e.printStackTrace();
-            close();
-        }
-        for (int i = 0; i < myFiles.size(); i++) {
-            bufferedWriter.write(myFiles.get(i).getName());
-            bufferedWriter.newLine();
-            bufferedWriter.flush();
-        }
-    }
 
     /**
      * Closes this stream and releases any system resources associated
