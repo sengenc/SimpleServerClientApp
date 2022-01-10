@@ -46,7 +46,7 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
 
             fileName = clientData.readUTF();
 
-            OutputStream output = new FileOutputStream("C:\\Users\\arda\\Desktop\\dir\\" + fileName);
+            OutputStream output = new FileOutputStream("C:\\Users\\Berkay\\Desktop\\dir\\" + fileName);
             long fileSize = clientData.readLong();
             long temp = fileSize;
             byte[] buffer = new byte[8192];
@@ -80,7 +80,7 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
     @Override
     public synchronized void upload(String fileName) {
         try {
-            File myFile = new File("C:\\Users\\arda\\Desktop\\dir\\" + fileName);
+            File myFile = new File("C:\\Users\\Berkay\\Desktop\\dir\\" + fileName);
             byte[] mybytearray = new byte[(int) myFile.length()];
 
             FileInputStream fis = new FileInputStream(myFile);
@@ -109,10 +109,10 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
      * die Datei existiert.
      *
      * @param fileName ist ein String Objekt das den Namen der Datei darstellt
-     * @throws IOException
+     * @throws IOException falls einer von den Stroemen einen Fehler auftritt
      */
     public synchronized void deleteFile(String fileName) throws IOException {
-        File file = new File("C:\\Users\\arda\\Desktop\\dir\\" + fileName);
+        File file = new File("C:\\Users\\Berkay\\Desktop\\dir\\" + fileName);
         if (file.exists()) {
             Files.delete(file.toPath());
             System.out.println("Datei " + fileName + " wurde gelöscht. " + date);
@@ -191,7 +191,7 @@ public class ServerWorker implements Runnable, Closeable, BasicMethods {
                     case "LST":
 
                         chatPrintWriter.println(Instruction.ACK);
-                        File files = new File("C:\\Users\\arda\\Desktop\\dir\\");
+                        File files = new File("C:\\Users\\Berkay\\Desktop\\dir\\");
 
                         String[] list = files.list();
 

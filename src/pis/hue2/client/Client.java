@@ -188,7 +188,7 @@ public class Client implements Closeable, BasicMethods {
         jbRemove.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                JFileChooser fileChooser = new JFileChooser("C:\\Users\\arda\\Desktop\\dir\\");
+                JFileChooser fileChooser = new JFileChooser("C:\\Users\\Berkay\\Desktop\\dir\\");
                 fileChooser.setDialogTitle("Choose a file to delete");
                 fileChooser.setApproveButtonText("Delete");
 
@@ -230,7 +230,7 @@ public class Client implements Closeable, BasicMethods {
         jbGet.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                JFileChooser fileChooser = new JFileChooser("C:\\Users\\arda\\Desktop\\dir\\");
+                JFileChooser fileChooser = new JFileChooser("C:\\Users\\Berkay\\Desktop\\dir\\");
                 fileChooser.setDialogTitle("Choose a file to download");
                 fileChooser.setApproveButtonText("Download");
 
@@ -401,7 +401,7 @@ public class Client implements Closeable, BasicMethods {
             DataInputStream clientData = new DataInputStream(inputStream);
 
             fileName = clientData.readUTF();
-            OutputStream outputStream = new FileOutputStream("C:\\Users\\arda\\Desktop\\client\\" + fileName);
+            OutputStream outputStream = new FileOutputStream("C:\\Users\\Berkay\\Desktop\\client\\" + fileName);
             long fileSize = clientData.readLong();
             byte[] buffer = new byte[8192];
 
@@ -427,7 +427,7 @@ public class Client implements Closeable, BasicMethods {
      * Mit dieser Methode kann man das Programm ohne GUI benutzen.
      * Der Client kann alle Befehle ins Terminal schreiben, die im Protokoll beschrieben wurden.
      *
-     * @throws IOException
+     * @throws IOException wenn einer von den Stroemen einen Fehler auftritt
      */
     public void clientFunctions() throws IOException {
         while (true) {
@@ -498,14 +498,14 @@ public class Client implements Closeable, BasicMethods {
     /**
      * Eine einfache Methode, die den Socket schliesst.
      * Wenn nicht, dann kommt eine Fehlermeldung.
-     * @throws IOException
+     * @throws IOException wenn der Stream nicht beendet werden kann.
      */
     @Override
     public void close() throws IOException {
         if (socket != null) {
             socket.close();
         } else {
-            System.err.println("Could not close the stream!");
+            System.err.println("Der Stream konnte nicht beendet werden.");
         }
     }
 
@@ -515,7 +515,7 @@ public class Client implements Closeable, BasicMethods {
      * SwingUtilities.invokeLater() aufgerufen.
      *
      * @param args
-     * @throws IOException
+     * @throws IOException wenn einer von den Stroemen einen Fehler auftritt
      */
     public static void main(String[] args) throws IOException {
 
